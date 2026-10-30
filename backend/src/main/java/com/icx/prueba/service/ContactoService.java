@@ -2,6 +2,8 @@ package com.icx.prueba.service;
 
 import com.icx.prueba.client.OracleClient;
 import com.icx.prueba.dto.ContactoDto;
+import com.icx.prueba.dto.ContactoRequest;
+import com.icx.prueba.dto.ContactoUpdate;
 import com.icx.prueba.dto.QueryResultsResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,8 +16,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class ContactoService {
 
-  /* Límite de resultados para la consulta. */
+    /* Límite de resultados para la consulta. */
     private static final int LIMITE = 50;
+
+    /* Tipo 0 = el principal tanto para correo como para teléfono (el que probaste en Postman). */
+    private static final int TIPO_PRINCIPAL = 0;
 
     /* Cliente para interactuar con Oracle. */
     private final OracleClient oracleClient;
@@ -25,6 +30,7 @@ public class ContactoService {
         this.oracleClient = oracleClient;
     }
 
+    /* ===================== BUSCAR ===================== */
 
     /* Busca contactos según los criterios proporcionados. */
     public List<ContactoDto> buscar(String ciudad, String nombre, String correo, String telefono) {
@@ -32,6 +38,62 @@ public class ContactoService {
         QueryResultsResponse respuesta = oracleClient.consultar(roql);
         return convertir(respuesta);
     }
+
+    /* ===================== CREAR ===================== */
+
+    /* Crea un contacto (con correo y teléfono si vienen) en una sola petición a Oracle. */
+    public ContactoDto crear(ContactoRequest datos) {
+        Map<String, Object> cuerpo = new LinkedHashMap<>();
+        cuerpo.put("name", Map.of("first", datos.nombre().trim(), "last", datos.apellido().trim()));
+
+        if (tieneTexto(datos.ciudad())) {
+            cuerpo.put("address", Map.of("city", datos.ciudad().trim()));
+        }
+        if (tieneTexto(datos.correo())) {
+            cuerpo.put("emails", List.of(Map.of(
+                    "address", datos.correo().trim(),
+                    "addressType", Map.of("id", TIPO_PRINCIPAL))));
+        }
+        if (tieneTexto(datos.telefono())) {
+            cuerpo.put("phones", List.of(Map.of(
+                    "number", datos.telefono().trim(),
+                    "phoneType", Map.of("id", TIPO_PRINCIPAL))));
+        }
+
+        Map<String, Object> respuesta = oracleClient.crear(cuerpo);
+
+        /* Oracle devuelve el contacto completo; de ahí sacamos el id nuevo. */
+        Object id = respuesta == null ? null : respuesta.get("id");
+        return new ContactoDto(
+                id == null ? null : String.valueOf(id),
+                datos.nombre().trim(),
+                datos.apellido().trim(),
+                vacioANulo(datos.ciudad()),
+                vacioANulo(datos.correo()),
+                vacioANulo(datos.telefono()));
+    }
+
+    /* ===================== ACTUALIZAR ===================== */
+
+    /* Actualiza nombre, apellido y (si viene) ciudad. Solo se envían los campos que cambian. */
+    public void actualizar(long id, ContactoUpdate datos) {
+        Map<String, Object> cuerpo = new LinkedHashMap<>();
+        cuerpo.put("name", Map.of("first", datos.nombre().trim(), "last", datos.apellido().trim()));
+
+        if (tieneTexto(datos.ciudad())) {
+            cuerpo.put("address", Map.of("city", datos.ciudad().trim()));
+        }
+        oracleClient.actualizar(id, cuerpo);
+    }
+
+    /* ===================== ELIMINAR ===================== */
+
+    /* Elimina un contacto por su id. */
+    public void eliminar(long id) {
+        oracleClient.eliminar(id);
+    }
+
+    /* ===================== AUXILIARES ===================== */
 
     /* Construye la consulta ROQL según los criterios proporcionados. */
     private String construirConsulta(String ciudad, String nombre, String correo, String telefono) {
@@ -71,6 +133,11 @@ public class ContactoService {
     /* Verifica si una cadena tiene texto. */
     private boolean tieneTexto(String valor) {
         return valor != null && !valor.isBlank();
+    }
+
+    /* Devuelve el texto sin espacios sobrantes, o null si está vacío. */
+    private String vacioANulo(String valor) {
+        return tieneTexto(valor) ? valor.trim() : null;
     }
 
     /** Duplica las comillas simples para que el texto del usuario no rompa la consulta. */

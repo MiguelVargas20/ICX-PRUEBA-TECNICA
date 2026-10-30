@@ -3,6 +3,7 @@ package com.icx.prueba.config;
 import java.net.http.HttpClient;
 import java.time.Duration;
 
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -10,6 +11,7 @@ import org.springframework.web.client.RestClient;
 
 /* Configuración del cliente REST para conectarse a la API de Oracle. */
 @Configuration
+
 public class RestClientConfig {
 
     /* Bean para crear el cliente REST para conectarse a la API de Oracle. */
