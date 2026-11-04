@@ -70,7 +70,7 @@ public class ApiExceptionHandler {
         }
         return respuesta(HttpStatus.BAD_GATEWAY, "Oracle presentó un error.", codigoOracle);
     }
-    /* 2b. Se intentó editar o eliminar un contacto que no existe en Oracle. */
+    /* Se intentó editar o eliminar un contacto que no existe en Oracle. */
     @ExceptionHandler(ContactoNoEncontradoException.class)
     public ResponseEntity<ErrorApi> contactoNoEncontrado(ContactoNoEncontradoException e) {
         log.info(e.getMessage());
