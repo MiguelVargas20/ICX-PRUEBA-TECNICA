@@ -80,16 +80,7 @@ public class ContactoService {
         if (tieneTexto(datos.ciudad())) {
             cuerpo.put("address", Map.of("city", datos.ciudad().trim()));
         }
-        if (tieneTexto(datos.correo())) {
-            cuerpo.put("emails", List.of(Map.of(
-                    "address", datos.correo().trim(),
-                    "addressType", Map.of("id", TIPO_PRINCIPAL))));
-        }
-        if (tieneTexto(datos.telefono())) {
-            cuerpo.put("phones", List.of(Map.of(
-                    "number", datos.telefono().trim(),
-                    "phoneType", Map.of("id", TIPO_PRINCIPAL))));
-        }
+                agregarCorreoYTelefono(cuerpo, datos.correo(), datos.telefono());
 
         Map<String, Object> respuesta = oracleClient.crear(cuerpo);
 
@@ -106,7 +97,7 @@ public class ContactoService {
 
     /* ===================== ACTUALIZAR ===================== */
 
-    /* Actualiza nombre, apellido y (si viene) ciudad. Solo se envían los campos que cambian. */
+    /* Actualiza nombre, apellido, ciudad y (si vienen) correo y teléfono principales. */
     public void actualizar(long id, ContactoUpdate datos) {
         Map<String, Object> cuerpo = new LinkedHashMap<>();
         cuerpo.put("name", Map.of("first", datos.nombre().trim(), "last", datos.apellido().trim()));
@@ -122,7 +113,8 @@ public class ContactoService {
             direccion.put("city", vacioANulo(datos.ciudad()));
             cuerpo.put("address", direccion);
         }
-                try {
+        agregarCorreoYTelefono(cuerpo, datos.correo(), datos.telefono());
+        try {
             oracleClient.actualizar(id, cuerpo);
         } catch (RestClientResponseException e) {
             throw siNoExiste(e, id);
@@ -192,6 +184,26 @@ public class ContactoService {
     }
 
     /* ===================== AUXILIARES ===================== */
+
+
+
+    /*
+     * Agrega el correo y el teléfono PRINCIPALES (tipo 0) al cuerpo que se envía a Oracle.
+     * Lo usan crear y actualizar. Si un dato viene vacío, no se envía (Oracle conserva el que tenga).
+     * El tipo es la "llave" de la lista: enviar addressType 0 reemplaza el correo principal.
+     */
+    private void agregarCorreoYTelefono(Map<String, Object> cuerpo, String correo, String telefono) {
+        if (tieneTexto(correo)) {
+            cuerpo.put("emails", List.of(Map.of(
+                    "address", correo.trim(),
+                    "addressType", Map.of("id", TIPO_PRINCIPAL))));
+        }
+        if (tieneTexto(telefono)) {
+            cuerpo.put("phones", List.of(Map.of(
+                    "number", telefono.trim(),
+                    "phoneType", Map.of("id", TIPO_PRINCIPAL))));
+        }
+    }
 
     /* Construye la consulta ROQL según los criterios proporcionados. */
     private String construirConsulta(String ciudad, String nombre, String correo, String telefono) {
