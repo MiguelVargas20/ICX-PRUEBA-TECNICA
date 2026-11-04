@@ -1,24 +1,27 @@
 package com.icx.prueba.service;
 
-import com.icx.prueba.client.OracleClient;
-import com.icx.prueba.dto.ContactoDto;
-import com.icx.prueba.dto.ContactoRequest;
-import com.icx.prueba.dto.ContactoUpdate;
-import com.icx.prueba.dto.QueryResultsResponse;
-import com.icx.prueba.dto.ResultadoBusqueda;
-import com.icx.prueba.respaldo.RespaldoService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.UnknownContentTypeException;
+
+import com.icx.prueba.client.OracleClient;
+import com.icx.prueba.dto.ContactoDto;
+import com.icx.prueba.dto.ContactoRequest;
+import com.icx.prueba.dto.ContactoUpdate;
+import com.icx.prueba.dto.QueryResultsResponse;
+import com.icx.prueba.dto.ResultadoBusqueda;
 import com.icx.prueba.exception.ContactoNoEncontradoException;
+import com.icx.prueba.respaldo.RespaldoService;
 
 /* Servicio para la gestión de contactos. */
 @Service
@@ -145,15 +148,18 @@ public class ContactoService {
     }
 
     /* ===================== RESPALDO ===================== */
-
     /*
      * ¿El error significa que "no podemos hablar con Oracle"?
+     *  - UnknownContentTypeException: Oracle respondió una página web (HTML) en vez de JSON.
      *  - ResourceAccessException: no hubo respuesta (sin internet, servidor caído, timeout).
      *  - 5xx: Oracle está caído o con problemas internos.
      *  - 401/403: Oracle no nos deja entrar (por ejemplo, el acceso está deshabilitado).
      * Un 400 o 404 NO cuenta: Oracle sí respondió, el problema es de los datos.
      */
     private boolean esFallaDeConexion(RestClientException e) {
+        if (e instanceof UnknownContentTypeException) {
+            return true; // Oracle respondió algo que no es JSON (ej. página HTML de sitio deshabilitado).
+        }
         if (e instanceof ResourceAccessException) {
             return true;
         }
