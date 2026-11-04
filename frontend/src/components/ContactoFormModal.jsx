@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
 
-/* Mismas reglas del backend (ContactoRequest / ContactoUpdate). */
+/* Expresiones simples para comprobar que correo y teléfono tengan formatos válidos. */
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const REGEX_TELEFONO = /^[0-9+()\-\s]{7,20}$/
 
+/* Valida los campos antes de enviar información al backend. */
 function validar(valores, editando) {
   const errores = {}
+  // Quitamos espacios de los extremos antes de validar cada dato.
   const nombre = valores.nombre.trim()
   const apellido = valores.apellido.trim()
 
@@ -29,47 +31,72 @@ function validar(valores, editando) {
   return errores
 }
 
+/* Prepara el objeto JSON que se enviará según si se crea o edita. */
+function prepararDatos(valores, editando) {
+  const datos = {
+    nombre: valores.nombre.trim(),
+    apellido: valores.apellido.trim(),
+    ciudad: valores.ciudad.trim(),
+  }
+
+  // Oracle maneja correo y teléfono aparte, por eso solo se envían al crear.
+  if (!editando) {
+    datos.correo = valores.correo.trim()
+    datos.telefono = valores.telefono.trim()
+  }
+  return datos
+}
+
 /*
  * Sirve para crear (contacto = null) y para editar (contacto = el contacto).
  * Al editar solo se muestran nombre, apellido y ciudad.
  * La página lo monta solo cuando está abierto, así el estado inicial siempre es el correcto.
  */
 export default function ContactoFormModal({ contacto, onGuardar, onCerrar, error }) {
+  // Si existe contacto recibido, el formulario está en modo edición.
   const editando = Boolean(contacto)
+
+  // Guarda los valores escritos en cada campo.
   const [valores, setValores] = useState({
     nombre: contacto?.nombre ?? '',
     apellido: contacto?.apellido ?? '',
     ciudad: contacto?.ciudad ?? '',
-    correo: '',
-    telefono: '',
+    // Al editar solo se muestran (no se envían): Oracle los maneja aparte.
+    correo: contacto?.correo ?? '',
+    telefono: contacto?.telefono ?? '',
   })
+  // Guarda los mensajes de validación por nombre de campo.
   const [errores, setErrores] = useState({})
+  // Evita repetir acciones mientras la petición está en curso.
   const [guardando, setGuardando] = useState(false)
 
-  const cambiar = (e) => setValores({ ...valores, [e.target.name]: e.target.value })
+  // Actualiza solo el campo que originó el evento.
+  const cambiar = (evento) => {
+    const { name, value } = evento.target
+    setValores((valoresActuales) => ({ ...valoresActuales, [name]: value }))
+  }
 
-  const enviar = async (e) => {
-    e.preventDefault()
+  // Se ejecuta cuando el usuario envía el formulario.
+  const enviar = async (evento) => {
+    evento.preventDefault()
+
+    // Validar primero evita enviar datos incorrectos al backend.
     const encontrados = validar(valores, editando)
     setErrores(encontrados)
     if (Object.keys(encontrados).length > 0) return
 
-    const datos = editando
-      ? { nombre: valores.nombre.trim(), apellido: valores.apellido.trim(), ciudad: valores.ciudad.trim() }
-      : {
-          nombre: valores.nombre.trim(),
-          apellido: valores.apellido.trim(),
-          ciudad: valores.ciudad.trim(),
-          correo: valores.correo.trim(),
-          telefono: valores.telefono.trim(),
-        }
+    const datos = prepararDatos(valores, editando)
 
+    // Bloquea las acciones mientras espera la respuesta de crear o actualizar.
     setGuardando(true)
     const ok = await onGuardar(datos)
     setGuardando(false)
+
+    // Solo se cierra si la operación fue exitosa.
     if (ok) onCerrar()
   }
 
+  /* Ayuda a mostrar campos repetidos con menos código. */
   const campo = (nombre, etiqueta, extra = {}) => (
     <Form.Group className="mb-3" controlId={`campo-${nombre}`}>
       <Form.Label>{etiqueta}</Form.Label>
@@ -85,21 +112,26 @@ export default function ContactoFormModal({ contacto, onGuardar, onCerrar, error
   )
 
   return (
+    // Modal centrado: no se puede seguir usando la página hasta cerrarlo.
     <Modal show onHide={guardando ? undefined : onCerrar} centered>
       <Form onSubmit={enviar} noValidate>
         <Modal.Header closeButton={!guardando}>
           <Modal.Title>{editando ? 'Editar contacto' : 'Nuevo contacto'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {/* Muestra aquí el mismo error enviado por el backend. */}
           {error && <Alert variant="danger">{error}</Alert>}
+
+          {/* Los campos se crean con la función campo para mantener el JSX simple. */}
           {campo('nombre', 'Nombre *', { autoFocus: true })}
           {campo('apellido', 'Apellido *')}
           {campo('ciudad', 'Ciudad')}
-          {!editando && (
-            <>
-              {campo('correo', 'Correo', { type: 'email' })}
-              {campo('telefono', 'Teléfono', { type: 'tel' })}
-            </>
+          {campo('correo', 'Correo', { type: 'email', disabled: editando })}
+          {campo('telefono', 'Teléfono', { type: 'tel', disabled: editando })}
+          {editando && (
+            <p className="small text-muted mb-0">
+              Por ahora solo se pueden editar el nombre, el apellido y la ciudad.
+            </p>
           )}
         </Modal.Body>
         <Modal.Footer>

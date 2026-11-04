@@ -1,7 +1,8 @@
 package com.icx.prueba.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /* DTO para representar la respuesta de los resultados de la consulta. */
 @JsonIgnoreProperties(ignoreUnknown = true)
