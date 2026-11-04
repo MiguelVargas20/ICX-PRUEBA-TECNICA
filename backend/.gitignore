@@ -35,3 +35,6 @@ build/
 ##Environment
 .env
 .env.*
+
+### Base de datos de respaldo (H2) ###
+data/

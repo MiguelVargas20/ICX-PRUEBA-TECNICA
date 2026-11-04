@@ -1,0 +1,174 @@
+/*
+ * Estilos propios de la app (se cargan DESPUÉS de Bootstrap, por eso pueden cambiarle los colores).
+ * Los colores son aproximados a los del PDF de la prueba de Imagine CX.
+ */
+:root {
+  /* Estos nombres permiten reutilizar colores sin escribir códigos repetidos. */
+  --icx-naranja: #f08c1f;
+  --icx-naranja-oscuro: #d9760a;
+  --icx-amarillo: #f9b233;
+  --icx-azul: #0f1a3c;
+  --icx-gris: #3a3b3c;
+  --icx-fondo: #f5f6fa;
+}
+
+/* Estilos básicos que se aplican al documento completo. */
+body {
+  background: var(--icx-fondo);
+  color: var(--icx-gris);
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+}
+
+/* ---------- Encabezado con degradado naranja ---------- */
+.encabezado-icx {
+  /* Mezcla dos colores y crea un degradado de izquierda a derecha. */
+  background: linear-gradient(120deg, var(--icx-naranja) 0%, var(--icx-amarillo) 100%);
+  color: #fff;
+  padding: 2rem 0 5rem; /* el espacio de abajo deja que la tarjeta de filtros "monte" sobre el encabezado */
+  border-bottom-left-radius: 2rem;
+  border-bottom-right-radius: 2rem;
+}
+
+/* El título principal aparece en negrita dentro del encabezado. */
+.encabezado-icx h1 {
+  font-weight: 700;
+}
+
+/* Baja un poco la intensidad del texto descriptivo. */
+.encabezado-icx p {
+  opacity: 0.9;
+}
+
+/* Configura el botón azul de crear contacto. */
+.encabezado-icx .btn-nuevo {
+  background: var(--icx-azul);
+  border-color: var(--icx-azul);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Cambia el botón a un azul más claro al pasar el puntero encima. */
+.encabezado-icx .btn-nuevo:hover {
+  background: #1b2a5c;
+  border-color: #1b2a5c;
+}
+
+/* ---------- Tarjetas ---------- */
+
+/* Define el fondo blanco y la sombra usada por las tarjetas. */
+.tarjeta {
+  background: #fff;
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: 0 6px 20px rgba(15, 26, 60, 0.08);
+}
+
+/* Hace que la tarjeta de filtros se superponga al encabezado. */
+.tarjeta-filtros {
+  margin-top: -3.5rem; /* sube sobre el encabezado */
+}
+
+/* ---------- Botones: el "primary" de Bootstrap pasa a naranja ICX ---------- */
+
+/* Personaliza el botón principal naranja y sus estados. */
+.btn-primary {
+  --bs-btn-bg: var(--icx-naranja);
+  --bs-btn-border-color: var(--icx-naranja);
+  --bs-btn-hover-bg: var(--icx-naranja-oscuro);
+  --bs-btn-hover-border-color: var(--icx-naranja-oscuro);
+  --bs-btn-active-bg: var(--icx-naranja-oscuro);
+  --bs-btn-active-border-color: var(--icx-naranja-oscuro);
+  --bs-btn-disabled-bg: var(--icx-naranja);
+  --bs-btn-disabled-border-color: var(--icx-naranja);
+  --bs-btn-focus-shadow-rgb: 240, 140, 31;
+}
+
+/* Personaliza los botones secundarios con borde naranja. */
+.btn-outline-primary {
+  --bs-btn-color: var(--icx-naranja-oscuro);
+  --bs-btn-border-color: var(--icx-naranja);
+  --bs-btn-hover-bg: var(--icx-naranja);
+  --bs-btn-hover-border-color: var(--icx-naranja);
+  --bs-btn-active-bg: var(--icx-naranja-oscuro);
+  --bs-btn-active-border-color: var(--icx-naranja-oscuro);
+  --bs-btn-focus-shadow-rgb: 240, 140, 31;
+}
+
+/* Cambia el contorno del campo cuando el usuario escribe en él. */
+.form-control:focus {
+  border-color: var(--icx-naranja);
+  box-shadow: 0 0 0 0.25rem rgba(240, 140, 31, 0.2);
+}
+
+/* ---------- Tabla ---------- */
+
+/* Configura los títulos pequeños de las columnas. */
+.tabla-contactos thead th {
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8a8d93;
+  border-bottom: 2px solid #eceef3;
+  white-space: nowrap;
+}
+
+/* Colorea suavemente una fila cuando el puntero pasa sobre ella. */
+.tabla-contactos tbody tr:hover {
+  background: #fff6ea;
+}
+
+/* Dibuja el círculo con las iniciales de cada contacto. */
+.avatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 50%;
+  background: var(--icx-azul);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Muestra la ciudad dentro de una insignia naranja clara. */
+.insignia-ciudad {
+  background: #fff1de;
+  color: var(--icx-naranja-oscuro);
+  font-weight: 500;
+}
+
+/* Elimina el subrayado normal de correo y teléfono. */
+.enlace-dato {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Resalta enlaces y agrega subrayado solo al pasar el puntero. */
+.enlace-dato:hover {
+  color: var(--icx-naranja-oscuro);
+  text-decoration: underline;
+}
+
+/* ---------- Modales ---------- */
+
+/* Agrega una línea naranja debajo de la cabecera del modal. */
+.modal-header {
+  border-bottom: 3px solid var(--icx-naranja);
+}
+
+/* Estiliza el título usando azul y negrita. */
+.modal-title {
+  font-weight: 700;
+  color: var(--icx-azul);
+}
+
+/* ---------- Celular: la tabla se hace un poco más compacta ---------- */
+
+/* Ajusta únicamente pantallas pequeñas de hasta 576 píxeles. */
+@media (max-width: 576px) {
+  .encabezado-icx {
+    padding-bottom: 4.5rem;
+  }
+}
