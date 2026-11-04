@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.client.UnknownContentTypeException;
 
 import com.icx.prueba.dto.ErrorApi;
 
@@ -40,6 +41,15 @@ public class ApiExceptionHandler {
         return respuesta(HttpStatus.SERVICE_UNAVAILABLE,
                 "No hay conexión con Oracle Service Cloud. Intenta de nuevo en un momento.", null);
     }
+
+    /* Oracle respondió algo que no es JSON (por ejemplo, una página HTML de sitio deshabilitado). */
+    @ExceptionHandler(UnknownContentTypeException.class)
+    public ResponseEntity<ErrorApi> respuestaNoJson(UnknownContentTypeException e) {
+        log.warn("Oracle respondió un contenido que no es JSON: {}", e.getContentType());
+        return respuesta(HttpStatus.SERVICE_UNAVAILABLE,
+                "Oracle Service Cloud no está disponible en este momento. Intenta de nuevo más tarde.", null);
+    }
+
 
     /* 2. Oracle respondió, pero con un error (400, 401, 404...). */
     @ExceptionHandler(RestClientResponseException.class)
