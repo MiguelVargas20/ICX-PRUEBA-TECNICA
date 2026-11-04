@@ -45,9 +45,25 @@ async function pedir(url, opciones) {
   )
 }
 
+/* Lee el JSON de la respuesta. Si llegó otra cosa (ej. HTML del proxy mal configurado), lanza un error entendible. */
+async function leerJson(respuesta) {
+  const tipo = respuesta.headers.get('content-type') ?? ''
+  if (!tipo.includes('application/json')) {
+    throw new ErrorApi(
+      'El servidor respondió algo que no es JSON. Revisa que el proxy /api apunte al backend (puerto 8080).',
+      respuesta.status,
+    )
+  }
+  return respuesta.json()
+}
+
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
-/* GET /api/contactos?ciudad=&nombre=&correo=&telefono= */
+/*
+ * GET /api/contactos?ciudad=&nombre=&correo=&telefono=
+ * Devuelve { contactos, desdeRespaldo, fechaRespaldo, filtrosRespaldo }.
+ * desdeRespaldo = true significa que Oracle no respondió y los datos vienen de la BD de respaldo.
+ */
 export async function buscar(filtros = {}) {
   const params = new URLSearchParams()
   Object.entries(filtros).forEach(([clave, valor]) => {
@@ -55,7 +71,7 @@ export async function buscar(filtros = {}) {
   })
   const consulta = params.toString()
   const respuesta = await pedir(consulta ? `${BASE}?${consulta}` : BASE)
-  return respuesta.json()
+  return leerJson(respuesta)
 }
 
 /* POST /api/contactos → 201 con el contacto creado */
@@ -65,7 +81,7 @@ export async function crear(datos) {
     headers: JSON_HEADERS,
     body: JSON.stringify(datos),
   })
-  return respuesta.json()
+  return leerJson(respuesta)
 }
 
 /* PUT /api/contactos/{id} → 204 (solo nombre, apellido y ciudad) */

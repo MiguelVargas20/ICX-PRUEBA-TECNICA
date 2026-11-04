@@ -1,7 +1,5 @@
 package com.icx.prueba.controller;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.icx.prueba.dto.ContactoDto;
 import com.icx.prueba.dto.ContactoRequest;
 import com.icx.prueba.dto.ContactoUpdate;
+import com.icx.prueba.dto.ResultadoBusqueda;
 import com.icx.prueba.service.ContactoService;
 
 import jakarta.validation.Valid;
@@ -35,9 +34,12 @@ public class ContactoController {
         this.service = service;
     }
 
-    /* GET /api/contactos?ciudad=&nombre=&correo=&telefono= → lista filtrada. */
+    /*
+     * GET /api/contactos?ciudad=&nombre=&correo=&telefono=
+     * → { contactos: [...], desdeRespaldo, fechaRespaldo, filtrosRespaldo }
+     */
     @GetMapping
-    public List<ContactoDto> buscar(
+    public ResultadoBusqueda buscar(
             @RequestParam(required = false) String ciudad,
             @RequestParam(required = false) String nombre,
             @RequestParam(required = false) String correo,

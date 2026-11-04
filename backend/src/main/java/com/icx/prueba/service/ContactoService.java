@@ -5,12 +5,19 @@ import com.icx.prueba.dto.ContactoDto;
 import com.icx.prueba.dto.ContactoRequest;
 import com.icx.prueba.dto.ContactoUpdate;
 import com.icx.prueba.dto.QueryResultsResponse;
+import com.icx.prueba.dto.ResultadoBusqueda;
+import com.icx.prueba.respaldo.RespaldoService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 /* Servicio para la gestión de contactos. */
 @Service
@@ -22,21 +29,44 @@ public class ContactoService {
     /* Tipo 0 = el principal tanto para correo como para teléfono (el que probaste en Postman). */
     private static final int TIPO_PRINCIPAL = 0;
 
+    private static final Logger log = LoggerFactory.getLogger(ContactoService.class);
+
     /* Cliente para interactuar con Oracle. */
     private final OracleClient oracleClient;
 
-    /* Constructor del servicio. */
-    public ContactoService(OracleClient oracleClient) {
+    /* Base de datos de respaldo (H2) para cuando Oracle no responde. */
+    private final RespaldoService respaldoService;
+
+    /* Constructor del servicio. Spring pasa los dos beans automáticamente. */
+    public ContactoService(OracleClient oracleClient, RespaldoService respaldoService) {
         this.oracleClient = oracleClient;
+        this.respaldoService = respaldoService;
     }
 
     /* ===================== BUSCAR ===================== */
 
-    /* Busca contactos según los criterios proporcionados. */
-    public List<ContactoDto> buscar(String ciudad, String nombre, String correo, String telefono) {
+    /*
+     * Busca contactos en Oracle.
+     *  - Si Oracle responde: se guarda el resultado en H2 (respaldo) y se devuelve.
+     *  - Si Oracle NO responde: se devuelve la última consulta guardada en H2.
+     *  - Si tampoco hay respaldo: se lanza el error original (el ApiExceptionHandler lo convierte en 503).
+     */
+    public ResultadoBusqueda buscar(String ciudad, String nombre, String correo, String telefono) {
         String roql = construirConsulta(ciudad, nombre, correo, telefono);
-        QueryResultsResponse respuesta = oracleClient.consultar(roql);
-        return convertir(respuesta);
+
+        List<ContactoDto> contactos;
+        try {
+            contactos = convertir(oracleClient.consultar(roql));
+        } catch (RestClientException e) {
+            if (!esFallaDeConexion(e)) {
+                throw e; // Ej: 400 por datos mal enviados → no es una desconexión, se reporta tal cual.
+            }
+            log.warn("Oracle no disponible ({}). Se intenta usar el respaldo.", e.getMessage());
+            return respaldoService.leer().orElseThrow(() -> e);
+        }
+
+        guardarRespaldo(contactos, describirFiltros(ciudad, nombre, correo, telefono));
+        return ResultadoBusqueda.desdeOracle(contactos);
     }
 
     /* ===================== CREAR ===================== */
@@ -91,6 +121,45 @@ public class ContactoService {
     /* Elimina un contacto por su id. */
     public void eliminar(long id) {
         oracleClient.eliminar(id);
+    }
+
+    /* ===================== RESPALDO ===================== */
+
+    /*
+     * ¿El error significa que "no podemos hablar con Oracle"?
+     *  - ResourceAccessException: no hubo respuesta (sin internet, servidor caído, timeout).
+     *  - 5xx: Oracle está caído o con problemas internos.
+     *  - 401/403: Oracle no nos deja entrar (por ejemplo, el acceso está deshabilitado).
+     * Un 400 o 404 NO cuenta: Oracle sí respondió, el problema es de los datos.
+     */
+    private boolean esFallaDeConexion(RestClientException e) {
+        if (e instanceof ResourceAccessException) {
+            return true;
+        }
+        if (e instanceof RestClientResponseException respuesta) {
+            int codigo = respuesta.getStatusCode().value();
+            return codigo >= 500 || codigo == 401 || codigo == 403;
+        }
+        return false;
+    }
+
+    /* Si falla guardar en H2, el usuario igual recibe los datos de Oracle: solo se registra en el log. */
+    private void guardarRespaldo(List<ContactoDto> contactos, String filtros) {
+        try {
+            respaldoService.guardar(contactos, filtros);
+        } catch (RuntimeException e) {
+            log.error("No se pudo actualizar el respaldo en H2", e);
+        }
+    }
+
+    /* Texto legible de los filtros usados: "ciudad: Bogotá, nombre: Ana" o "sin filtros". */
+    private String describirFiltros(String ciudad, String nombre, String correo, String telefono) {
+        List<String> partes = new ArrayList<>();
+        if (tieneTexto(ciudad)) partes.add("ciudad: " + ciudad.trim());
+        if (tieneTexto(nombre)) partes.add("nombre: " + nombre.trim());
+        if (tieneTexto(correo)) partes.add("correo: " + correo.trim());
+        if (tieneTexto(telefono)) partes.add("teléfono: " + telefono.trim());
+        return partes.isEmpty() ? "sin filtros" : String.join(", ", partes);
     }
 
     /* ===================== AUXILIARES ===================== */
