@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import com.icx.prueba.exception.ContactoNoEncontradoException;
 
 /* Servicio para la gestión de contactos. */
 @Service
@@ -110,17 +111,45 @@ public class ContactoService {
         Map<String, Object> cuerpo = new LinkedHashMap<>();
         cuerpo.put("name", Map.of("first", datos.nombre().trim(), "last", datos.apellido().trim()));
 
-        if (tieneTexto(datos.ciudad())) {
-            cuerpo.put("address", Map.of("city", datos.ciudad().trim()));
+        /*
+         * La ciudad se envía siempre que venga en la petición:
+         *  - con texto → se guarda esa ciudad.
+         *  - vacía ("") → se envía null para que Oracle la BORRE.
+         * HashMap y no Map.of, porque Map.of no acepta valores null.
+         */
+        if (datos.ciudad() != null) {
+            Map<String, Object> direccion = new HashMap<>();
+            direccion.put("city", vacioANulo(datos.ciudad()));
+            cuerpo.put("address", direccion);
         }
-        oracleClient.actualizar(id, cuerpo);
+                try {
+            oracleClient.actualizar(id, cuerpo);
+        } catch (RestClientResponseException e) {
+            throw siNoExiste(e, id);
+        }
     }
 
     /* ===================== ELIMINAR ===================== */
 
     /* Elimina un contacto por su id. */
+    /* Elimina un contacto por su id. */
     public void eliminar(long id) {
-        oracleClient.eliminar(id);
+        try {
+            oracleClient.eliminar(id);
+        } catch (RestClientResponseException e) {
+            throw siNoExiste(e, id);
+        }
+    }
+
+    /*
+     * Si Oracle respondió 404 al pedir ESTE contacto, el contacto no existe.
+     * Cualquier otro error se devuelve tal cual para que lo maneje el ApiExceptionHandler.
+     */
+    private RuntimeException siNoExiste(RestClientResponseException e, long id) {
+        if (e.getStatusCode().value() == 404) {
+            return new ContactoNoEncontradoException(id);
+        }
+        return e;
     }
 
     /* ===================== RESPALDO ===================== */

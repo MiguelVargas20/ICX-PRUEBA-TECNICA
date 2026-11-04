@@ -51,8 +51,11 @@ public class ApiExceptionHandler {
         log.warn("Oracle respondió {} ({}): {}", codigo, codigoOracle, e.getResponseBodyAsString());
 
         if (codigo == 404) {
-            return respuesta(HttpStatus.NOT_FOUND, "El contacto no existe.", codigoOracle);
+            /* Un 404 que NO viene de editar/eliminar un contacto = URL o versión de la API mal configurada. */
+            return respuesta(HttpStatus.BAD_GATEWAY,
+                    "El servidor está mal configurado para conectarse con Oracle.", codigoOracle);
         }
+
         if (codigo == 400 && "OSC-CREST-00025".equals(codigoOracle)) {
             /* Falta el encabezado de contexto: es un error nuestro, no del usuario. */
             return respuesta(HttpStatus.BAD_GATEWAY,
@@ -66,6 +69,13 @@ public class ApiExceptionHandler {
                     "El servidor no pudo autenticarse con Oracle.", codigoOracle);
         }
         return respuesta(HttpStatus.BAD_GATEWAY, "Oracle presentó un error.", codigoOracle);
+    }
+    /* Se intentó editar o eliminar un contacto que no existe en Oracle. */
+    @ExceptionHandler(ContactoNoEncontradoException.class)
+    public ResponseEntity<ErrorApi> contactoNoEncontrado(ContactoNoEncontradoException e) {
+        log.info(e.getMessage());
+        return respuesta(HttpStatus.NOT_FOUND,
+                "El contacto no existe o ya fue eliminado. Actualiza la lista.", null);
     }
 
     /* 3. El formulario trae datos inválidos (falló alguna regla de @Valid). */
