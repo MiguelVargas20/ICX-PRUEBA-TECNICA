@@ -15,10 +15,18 @@ public record ResultadoBusqueda(
         Instant fechaRespaldo,
         String filtrosRespaldo) {
 
+    /*
+     * Fábrica para una respuesta normal. Los otros tres campos quedan null
+     * porque no se está mostrando una copia de la base de respaldo.
+     */
     public static ResultadoBusqueda desdeOracle(List<ContactoDto> contactos) {
         return new ResultadoBusqueda(contactos, false, null, null);
     }
 
+    /*
+     * Fábrica para modo de contingencia. Include fecha y filtros para que el
+     * frontend explique claramente qué consulta se pudo recuperar.
+     */
     public static ResultadoBusqueda desdeRespaldo(List<ContactoDto> contactos, Instant fecha, String filtros) {
         return new ResultadoBusqueda(contactos, true, fecha, filtros);
     }

@@ -8,6 +8,11 @@ package com.icx.prueba.exception;
 public class ContactoNoEncontradoException extends RuntimeException {
 
     public ContactoNoEncontradoException(long id) {
+        /*
+         * super() guarda el mensaje técnico dentro de la excepción.
+         * El texto visible para el usuario puede cambiarse después en
+         * ApiExceptionHandler sin modificar esta clase.
+         */
         super("No existe el contacto con id " + id);
     }
 }

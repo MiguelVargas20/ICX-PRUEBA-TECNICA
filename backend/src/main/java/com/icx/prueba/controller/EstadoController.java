@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/estado")
 public class EstadoController {
 
+    /* Devuelve un JSON simple; responde aunque Oracle esté caído. */
     @GetMapping
     public Map<String, String> estado() {
         return Map.of("estado", "ok");

@@ -6,6 +6,11 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /* Datos que llegan del formulario para CREAR un contacto. */
+/*
+ * Los records son clases de datos pequeñas creadas por Java.
+ * Además de guardar los valores, generan automáticamente el constructor,
+ * getters como nombre(), equals(), hashCode() y toString().
+ */
 public record ContactoRequest(
 
         @NotBlank(message = "El nombre es obligatorio.")

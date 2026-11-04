@@ -29,6 +29,10 @@ import com.icx.prueba.dto.ErrorApi;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    /*
+     * Logger es la herramienta que escribe mensajes técnicos en la consola.
+     * Se usa para registrar problemas sin mostrar datos sensibles al usuario.
+     */
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     /* Los códigos de error de Oracle tienen esta forma: OSC-CREST-00013 */
@@ -38,6 +42,10 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ResourceAccessException.class)
     public ResponseEntity<ErrorApi> sinConexion(ResourceAccessException e) {
         log.warn("Sin conexión con Oracle: {}", e.getMessage());
+        /*
+         * 503 SERVICE_UNAVAILABLE comunica que el servicio existe, pero una
+         * dependencia externa no está disponible en ese momento.
+         */
         return respuesta(HttpStatus.SERVICE_UNAVAILABLE,
                 "No hay conexión con Oracle Service Cloud. Intenta de nuevo en un momento.", null);
     }
@@ -91,6 +99,10 @@ public class ApiExceptionHandler {
     /* 3. El formulario trae datos inválidos (falló alguna regla de @Valid). */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorApi> datosInvalidos(MethodArgumentNotValidException e) {
+        /*
+         * getFieldErrors() contiene solo los campos que fallaron.
+         * Joining combina varios mensajes en una sola frase separada por espacios.
+         */
         String mensaje = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getDefaultMessage())
                 .collect(Collectors.joining(" "));

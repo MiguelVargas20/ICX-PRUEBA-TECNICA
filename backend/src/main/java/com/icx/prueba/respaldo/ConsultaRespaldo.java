@@ -33,6 +33,11 @@ public class ConsultaRespaldo {
     protected ConsultaRespaldo() {
     }
 
+    /*
+     * Constructor normal usado por RespaldoService.
+     * El constructor protegido vacío existe para que JPA pueda reconstruir
+     * una entidad desde la base de datos.
+     */
     public ConsultaRespaldo(Instant fecha, String filtros) {
         this.id = ID_UNICO;
         this.fecha = fecha;

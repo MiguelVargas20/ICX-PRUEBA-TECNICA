@@ -6,8 +6,13 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 
 /* Datos que llegan del formulario para ACTUALIZAR un contacto. */
+/*
+ * Separar ContactoRequest y ContactoUpdate ayuda a expresar las diferencias
+ * entre crear y editar sin mezclar reglas de ambos procesos.
+ */
 public record ContactoUpdate(
 
+        /* Nombre y apellido siguen siendo obligatorios al editar. */
         @NotBlank(message = "El nombre es obligatorio.")
         @Size(max = 80, message = "El nombre no puede pasar de 80 caracteres.")
         String nombre,
@@ -16,7 +21,8 @@ public record ContactoUpdate(
         @Size(max = 80, message = "El apellido no puede pasar de 80 caracteres.")
         String apellido,
 
-                String ciudad,
+        /* null significa que ciudad no llegó; texto vacío significa solicitar su borrado. */
+        String ciudad,
 
         /* Mismas reglas que al crear (ContactoRequest). Vacío = no se cambia. */
         @Email(message = "El correo no tiene un formato válido.")

@@ -24,6 +24,11 @@ import com.icx.prueba.exception.ContactoNoEncontradoException;
 import com.icx.prueba.respaldo.RespaldoService;
 
 /* Servicio para la gestión de contactos. */
+/*
+ * Esta capa contiene la lógica de negocio. El controlador recibe una petición,
+ * pero no sabe cómo hablar con Oracle ni cómo preparar una consulta ROQL.
+ * El servicio recibe los datos, prepara las operaciones y coordina Oracle + H2.
+ */
 @Service
 public class ContactoService {
 
@@ -43,6 +48,10 @@ public class ContactoService {
 
     /* Constructor del servicio. Spring pasa los dos beans automáticamente. */
     public ContactoService(OracleClient oracleClient, RespaldoService respaldoService) {
+        /*
+         * Inyección de dependencias: Spring creó OracleClient y RespaldoService
+         * antes que esta clase y los entrega aquí sin que nosotros hagamos new().
+         */
         this.oracleClient = oracleClient;
         this.respaldoService = respaldoService;
     }
@@ -56,6 +65,10 @@ public class ContactoService {
      *  - Si tampoco hay respaldo: se lanza el error original (el ApiExceptionHandler lo convierte en 503).
      */
     public ResultadoBusqueda buscar(String ciudad, String nombre, String correo, String telefono) {
+        /*
+         * Primero se transforma la petición HTTP en una consulta ROQL que Oracle
+         * pueda entender. La parte de filtros se construye en construirConsulta().
+         */
         String roql = construirConsulta(ciudad, nombre, correo, telefono);
 
         List<ContactoDto> contactos;
@@ -66,6 +79,10 @@ public class ContactoService {
                 throw e; // Ej: 400 por datos mal enviados → no es una desconexión, se reporta tal cual.
             }
             log.warn("Oracle no disponible ({}). Se intenta usar el respaldo.", e.getMessage());
+            /*
+             * read() devuelve Optional. Si existe respaldo se lee; si nunca hubo
+             * una consulta exitosa, orElseThrow() vuelve a lanzar el error original.
+             */
             return respaldoService.leer().orElseThrow(() -> e);
         }
 
@@ -77,6 +94,10 @@ public class ContactoService {
 
     /* Crea un contacto (con correo y teléfono si vienen) en una sola petición a Oracle. */
     public ContactoDto crear(ContactoRequest datos) {
+        /*
+         * LinkedHashMap conserva el orden de las claves. No afecta el resultado,
+         * pero facilita leer el JSON que se enviará y revisar logs o pruebas.
+         */
         Map<String, Object> cuerpo = new LinkedHashMap<>();
         cuerpo.put("name", Map.of("first", datos.nombre().trim(), "last", datos.apellido().trim()));
 
@@ -160,6 +181,10 @@ public class ContactoService {
         if (e instanceof UnknownContentTypeException) {
             return true; // Oracle respondió algo que no es JSON (ej. página HTML de sitio deshabilitado).
         }
+        /*
+         * instanceof permite comprobar primero qué clase de excepción llegó.
+         * Así se decide si el problema permite usar respaldo o debe propagarse.
+         */
         if (e instanceof ResourceAccessException) {
             return true;
         }
@@ -215,6 +240,10 @@ public class ContactoService {
     private String construirConsulta(String ciudad, String nombre, String correo, String telefono) {
         List<String> filtros = new ArrayList<>();
 
+        /*
+         * Cada filtro crea una condición ROQL.
+         * LIKE con % busca coincidencias parciales, parecido a contains().
+         */
         /* Filtrar por ciudad */
         if (tieneTexto(ciudad)) {
             filtros.add("Address.City LIKE '%" + limpiar(ciudad) + "%'");
@@ -242,6 +271,10 @@ public class ContactoService {
             consulta += " WHERE " + String.join(" AND ", filtros);
         }
 
+        /*
+         * AND hace que deban cumplirse todos los filtros seleccionados.
+         * LIMIT evita descargar una cantidad excesiva de contactos.
+         */
         /* Aplicar límite de resultados */
         return consulta + " LIMIT " + LIMITE;
     }
@@ -264,6 +297,7 @@ public class ContactoService {
     /* Convierte los resultados de la consulta en una lista de DTOs. */
     private List<ContactoDto> convertir(QueryResultsResponse respuesta) {
         if (respuesta == null || respuesta.items() == null || respuesta.items().isEmpty()) {
+            // Oracle puede responder sin datos; en ese caso se representa como lista vacía.
             return List.of();
         }
 
@@ -281,6 +315,11 @@ public class ContactoService {
         /* Recorrer las filas de resultados */
         for (List<Object> fila : item.rows()) {
             Map<String, String> valores = new HashMap<>();
+            /*
+             * QueryResults devuelve una fila como lista: primero viene el valor,
+             * luego el siguiente, según el orden de columnNames.
+             * Este ciclo convierte posiciones en pares nombre -> valor.
+             */
             for (int i = 0; i < columnas.size(); i++) {
                 Object valor = fila.get(i);
                 valores.put(columnas.get(i), valor == null ? null : String.valueOf(valor));
