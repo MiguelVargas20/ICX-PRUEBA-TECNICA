@@ -33,6 +33,10 @@ public class RespaldoService {
      */
     @Transactional
     public void guardar(List<ContactoDto> resultado, String filtros) {
+        /*
+         * Primero se elimina el respaldo anterior completo.
+         * Luego se guarda la lista nueva y la información de su consulta.
+         */
         contactos.deleteAllInBatch();
 
         List<ContactoRespaldo> filas = new ArrayList<>();

@@ -1,4 +1,5 @@
 :root {
+  /* Variables globales de diseño. Se pueden usar como var(--nombre) desde cualquier regla. */
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
