@@ -97,7 +97,7 @@ public class ContactoService {
 
     /* ===================== ACTUALIZAR ===================== */
 
-    /* Actualiza nombre, apellido y (si viene) ciudad. Solo se envían los campos que cambian. */
+    /* Actualiza nombre, apellido, ciudad y (si vienen) correo y teléfono principales. */
     public void actualizar(long id, ContactoUpdate datos) {
         Map<String, Object> cuerpo = new LinkedHashMap<>();
         cuerpo.put("name", Map.of("first", datos.nombre().trim(), "last", datos.apellido().trim()));
@@ -113,7 +113,8 @@ public class ContactoService {
             direccion.put("city", vacioANulo(datos.ciudad()));
             cuerpo.put("address", direccion);
         }
-                try {
+        agregarCorreoYTelefono(cuerpo, datos.correo(), datos.telefono());
+        try {
             oracleClient.actualizar(id, cuerpo);
         } catch (RestClientResponseException e) {
             throw siNoExiste(e, id);
