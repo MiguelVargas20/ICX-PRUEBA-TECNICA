@@ -25,9 +25,9 @@ import com.icx.prueba.respaldo.RespaldoService;
 
 /* Servicio para la gestión de contactos. */
 /*
- * Esta capa contiene la lógica de negocio. El controlador recibe una petición,
- * pero no sabe cómo hablar con Oracle ni cómo preparar una consulta ROQL.
- * El servicio recibe los datos, prepara las operaciones y coordina Oracle + H2.
+ * Contiene la lógica de negocio de contactos: prepara operaciones, llama a Oracle
+ * y decide cuándo usar el respaldo H2. Se conecta con ContactoController.java,
+ * OracleClient.java y RespaldoService.java.
  */
 @Service
 public class ContactoService {
@@ -73,9 +73,9 @@ public class ContactoService {
 
         List<ContactoDto> contactos;
         try {
-            contactos = convertir(oracleClient.consultar(roql));
+            contactos = convertirRespuestaOracle(oracleClient.consultar(roql));
         } catch (RestClientException e) {
-            if (!esFallaDeConexion(e)) {
+            if (!permiteUsarRespaldo(e)) {
                 throw e; // Ej: 400 por datos mal enviados → no es una desconexión, se reporta tal cual.
             }
             log.warn("Oracle no disponible ({}). Se intenta usar el respaldo.", e.getMessage());
@@ -86,7 +86,7 @@ public class ContactoService {
             return respaldoService.leer().orElseThrow(() -> e);
         }
 
-        guardarRespaldo(contactos, describirFiltros(ciudad, nombre, correo, telefono));
+        guardarRespaldo(contactos, crearTextoFiltros(ciudad, nombre, correo, telefono));
         return ResultadoBusqueda.desdeOracle(contactos);
     }
 
@@ -101,10 +101,10 @@ public class ContactoService {
         Map<String, Object> cuerpo = new LinkedHashMap<>();
         cuerpo.put("name", Map.of("first", datos.nombre().trim(), "last", datos.apellido().trim()));
 
-        if (tieneTexto(datos.ciudad())) {
+        if (hayTexto(datos.ciudad())) {
             cuerpo.put("address", Map.of("city", datos.ciudad().trim()));
         }
-                agregarCorreoYTelefono(cuerpo, datos.correo(), datos.telefono());
+                agregarCorreoTelefonoPrincipal(cuerpo, datos.correo(), datos.telefono());
 
         Map<String, Object> respuesta = oracleClient.crear(cuerpo);
 
@@ -114,9 +114,9 @@ public class ContactoService {
                 id == null ? null : String.valueOf(id),
                 datos.nombre().trim(),
                 datos.apellido().trim(),
-                vacioANulo(datos.ciudad()),
-                vacioANulo(datos.correo()),
-                vacioANulo(datos.telefono()));
+                valorONulo(datos.ciudad()),
+                valorONulo(datos.correo()),
+                valorONulo(datos.telefono()));
     }
 
     /* ===================== ACTUALIZAR ===================== */
@@ -134,26 +134,25 @@ public class ContactoService {
          */
         if (datos.ciudad() != null) {
             Map<String, Object> direccion = new HashMap<>();
-            direccion.put("city", vacioANulo(datos.ciudad()));
+            direccion.put("city", valorONulo(datos.ciudad()));
             cuerpo.put("address", direccion);
         }
-        agregarCorreoYTelefono(cuerpo, datos.correo(), datos.telefono());
+        agregarCorreoTelefonoPrincipal(cuerpo, datos.correo(), datos.telefono());
         try {
             oracleClient.actualizar(id, cuerpo);
         } catch (RestClientResponseException e) {
-            throw siNoExiste(e, id);
+            throw convertir404DeContacto(e, id);
         }
     }
 
     /* ===================== ELIMINAR ===================== */
 
     /* Elimina un contacto por su id. */
-    /* Elimina un contacto por su id. */
     public void eliminar(long id) {
         try {
             oracleClient.eliminar(id);
         } catch (RestClientResponseException e) {
-            throw siNoExiste(e, id);
+            throw convertir404DeContacto(e, id);
         }
     }
 
@@ -161,7 +160,7 @@ public class ContactoService {
      * Si Oracle respondió 404 al pedir ESTE contacto, el contacto no existe.
      * Cualquier otro error se devuelve tal cual para que lo maneje el ApiExceptionHandler.
      */
-    private RuntimeException siNoExiste(RestClientResponseException e, long id) {
+    private RuntimeException convertir404DeContacto(RestClientResponseException e, long id) {
         if (e.getStatusCode().value() == 404) {
             return new ContactoNoEncontradoException(id);
         }
@@ -177,7 +176,7 @@ public class ContactoService {
      *  - 401/403: Oracle no nos deja entrar (por ejemplo, el acceso está deshabilitado).
      * Un 400 o 404 NO cuenta: Oracle sí respondió, el problema es de los datos.
      */
-    private boolean esFallaDeConexion(RestClientException e) {
+    private boolean permiteUsarRespaldo(RestClientException e) {
         if (e instanceof UnknownContentTypeException) {
             return true; // Oracle respondió algo que no es JSON (ej. página HTML de sitio deshabilitado).
         }
@@ -205,12 +204,12 @@ public class ContactoService {
     }
 
     /* Texto legible de los filtros usados: "ciudad: Bogotá, nombre: Ana" o "sin filtros". */
-    private String describirFiltros(String ciudad, String nombre, String correo, String telefono) {
+    private String crearTextoFiltros(String ciudad, String nombre, String correo, String telefono) {
         List<String> partes = new ArrayList<>();
-        if (tieneTexto(ciudad)) partes.add("ciudad: " + ciudad.trim());
-        if (tieneTexto(nombre)) partes.add("nombre: " + nombre.trim());
-        if (tieneTexto(correo)) partes.add("correo: " + correo.trim());
-        if (tieneTexto(telefono)) partes.add("teléfono: " + telefono.trim());
+        if (hayTexto(ciudad)) partes.add("ciudad: " + ciudad.trim());
+        if (hayTexto(nombre)) partes.add("nombre: " + nombre.trim());
+        if (hayTexto(correo)) partes.add("correo: " + correo.trim());
+        if (hayTexto(telefono)) partes.add("teléfono: " + telefono.trim());
         return partes.isEmpty() ? "sin filtros" : String.join(", ", partes);
     }
 
@@ -223,13 +222,13 @@ public class ContactoService {
      * Lo usan crear y actualizar. Si un dato viene vacío, no se envía (Oracle conserva el que tenga).
      * El tipo es la "llave" de la lista: enviar addressType 0 reemplaza el correo principal.
      */
-    private void agregarCorreoYTelefono(Map<String, Object> cuerpo, String correo, String telefono) {
-        if (tieneTexto(correo)) {
+    private void agregarCorreoTelefonoPrincipal(Map<String, Object> cuerpo, String correo, String telefono) {
+        if (hayTexto(correo)) {
             cuerpo.put("emails", List.of(Map.of(
                     "address", correo.trim(),
                     "addressType", Map.of("id", TIPO_PRINCIPAL))));
         }
-        if (tieneTexto(telefono)) {
+        if (hayTexto(telefono)) {
             cuerpo.put("phones", List.of(Map.of(
                     "number", telefono.trim(),
                     "phoneType", Map.of("id", TIPO_PRINCIPAL))));
@@ -245,23 +244,23 @@ public class ContactoService {
          * LIKE con % busca coincidencias parciales, parecido a contains().
          */
         /* Filtrar por ciudad */
-        if (tieneTexto(ciudad)) {
-            filtros.add("Address.City LIKE '%" + limpiar(ciudad) + "%'");
+        if (hayTexto(ciudad)) {
+            filtros.add("Address.City LIKE '%" + escaparComillasROQL(ciudad) + "%'");
         }
 
         /* Filtrar por nombre */
-        if (tieneTexto(nombre)) {
-            String n = limpiar(nombre);
+        if (hayTexto(nombre)) {
+            String n = escaparComillasROQL(nombre);
             filtros.add("(Name.First LIKE '%" + n + "%' OR Name.Last LIKE '%" + n + "%')");
         }
 
         /* Filtrar por correo */
-        if (tieneTexto(correo)) {
-            filtros.add("Emails.Address LIKE '%" + limpiar(correo) + "%'");
+        if (hayTexto(correo)) {
+            filtros.add("Emails.Address LIKE '%" + escaparComillasROQL(correo) + "%'");
         }
         /* Filtrar por teléfono */
-        if (tieneTexto(telefono)) {
-            filtros.add("Phones.Number LIKE '%" + limpiar(telefono) + "%'");
+        if (hayTexto(telefono)) {
+            filtros.add("Phones.Number LIKE '%" + escaparComillasROQL(telefono) + "%'");
         }
 
         /* Construir la consulta final */
@@ -280,22 +279,22 @@ public class ContactoService {
     }
 
     /* Verifica si una cadena tiene texto. */
-    private boolean tieneTexto(String valor) {
+    private boolean hayTexto(String valor) {
         return valor != null && !valor.isBlank();
     }
 
     /* Devuelve el texto sin espacios sobrantes, o null si está vacío. */
-    private String vacioANulo(String valor) {
-        return tieneTexto(valor) ? valor.trim() : null;
+    private String valorONulo(String valor) {
+        return hayTexto(valor) ? valor.trim() : null;
     }
 
     /** Duplica las comillas simples para que el texto del usuario no rompa la consulta. */
-    private String limpiar(String valor) {
+    private String escaparComillasROQL(String valor) {
         return valor.trim().replace("'", "''");
     }
 
     /* Convierte los resultados de la consulta en una lista de DTOs. */
-    private List<ContactoDto> convertir(QueryResultsResponse respuesta) {
+    private List<ContactoDto> convertirRespuestaOracle(QueryResultsResponse respuesta) {
         if (respuesta == null || respuesta.items() == null || respuesta.items().isEmpty()) {
             return List.of();
         }
@@ -331,7 +330,7 @@ public class ContactoService {
 
             /* Si el contacto ya salió en otra fila, se combinan para no perder el correo o el teléfono. */
             ContactoDto anterior = porId.get(id);
-            porId.put(id, anterior == null ? nuevo : combinar(anterior, nuevo));
+            porId.put(id, anterior == null ? nuevo : combinarFilasDelContacto(anterior, nuevo));
         }
 
         /* Devolver la lista de DTOs */
@@ -339,10 +338,10 @@ public class ContactoService {
     }
 
     /* Une dos filas del mismo contacto: se queda con el primer correo y el primer teléfono que no estén vacíos. */
-    private ContactoDto combinar(ContactoDto a, ContactoDto b) {
+    private ContactoDto combinarFilasDelContacto(ContactoDto filaAnterior, ContactoDto filaNueva) {
         return new ContactoDto(
-                a.id(), a.nombre(), a.apellido(), a.ciudad(),
-                a.correo() != null ? a.correo() : b.correo(),
-                a.telefono() != null ? a.telefono() : b.telefono());
+                filaAnterior.id(), filaAnterior.nombre(), filaAnterior.apellido(), filaAnterior.ciudad(),
+                filaAnterior.correo() != null ? filaAnterior.correo() : filaNueva.correo(),
+                filaAnterior.telefono() != null ? filaAnterior.telefono() : filaNueva.telefono());
     }
 }
