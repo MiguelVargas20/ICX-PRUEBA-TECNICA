@@ -14,6 +14,7 @@ const formatearFecha = (iso) =>
     ? new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
     : 'fecha desconocida'
 
+    /* Página de administración de contactos. */
 export default function ContactosPage() {
   const { contactos, cargando, error, respaldo, buscar, crear, actualizar, eliminar, limpiarError } =
     useContactos()
@@ -27,6 +28,7 @@ export default function ContactosPage() {
   const [eliminando, setEliminando] = useState(false)
   const [aviso, setAviso] = useState(null) // mensaje verde de "todo salió bien"
 
+  // ---------- Funciones para abrir/cerrar formularios y guardar/eliminar ----------
   const abrirCrear = () => {
     limpiarError()
     setFormulario({ contacto: null })
