@@ -5,6 +5,10 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import './estilos.css'
 import App from './App.jsx'
 
+/*
+ * Punto de entrada del frontend.
+ * Se conecta con index.html (contenedor root), App.jsx y los estilos de Bootstrap/estilos.css.
+ */
 // Busca el div con id="root" del index.html. Ahí React dibuja toda la interfaz.
 createRoot(document.getElementById('root')).render(
   // StrictMode activa comprobaciones adicionales durante el desarrollo.

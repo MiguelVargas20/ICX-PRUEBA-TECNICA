@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as api from '../services/contactosApi'
 
 /*
- * Guarda la lista, si está cargando, el mensaje de error y si estamos en "modo respaldo".
- * Cuando crear / actualizar / eliminar terminan bien, vuelve a cargar la lista
- * con los mismos filtros que tenía la última búsqueda.
+ * Guarda y administra el estado de contactos que usa la página.
+ * Se conecta con la página ContactosPage.jsx y el servicio contactosApi.js:
+ * contiene la lista, el cargando, los errores, el respaldo y las acciones CRUD.
  */
 export function useContactos() {
   const [contactos, setContactos] = useState([])
@@ -15,7 +15,7 @@ export function useContactos() {
   const filtrosActuales = useRef({})
 
   /* Pone en el estado lo que respondió el backend (venga de Oracle o del respaldo). */
-  const aplicarResultado = useCallback((resultado) => {
+  const mostrarResultado = useCallback((resultado) => {
     setContactos(resultado.contactos ?? [])
     setRespaldo(
       resultado.desdeRespaldo
@@ -29,13 +29,13 @@ export function useContactos() {
     let activo = true
     api
       .buscar({})
-      .then((resultado) => activo && aplicarResultado(resultado))
+      .then((resultado) => activo && mostrarResultado(resultado))
       .catch((e) => activo && setError(e.message))
       .finally(() => activo && setCargando(false))
     return () => {
       activo = false
     }
-  }, [aplicarResultado])
+  }, [mostrarResultado])
 
   /* Busca con los filtros dados; sin argumento repite la última búsqueda. */
   const buscar = useCallback(
@@ -44,18 +44,18 @@ export function useContactos() {
       setCargando(true)
       setError(null)
       try {
-        aplicarResultado(await api.buscar(filtros))
+        mostrarResultado(await api.buscar(filtros))
       } catch (e) {
         setError(e.message)
       } finally {
         setCargando(false)
       }
     },
-    [aplicarResultado],
+    [mostrarResultado],
   )
 
   /* Ejecuta una acción; si sale bien recarga la lista. Devuelve true/false. */
-  const ejecutar = useCallback(
+  const ejecutarAccion = useCallback(
     async (accion) => {
       setError(null)
       try {
@@ -70,9 +70,9 @@ export function useContactos() {
     [buscar],
   )
 
-  const crear = useCallback((datos) => ejecutar(() => api.crear(datos)), [ejecutar])
-  const actualizar = useCallback((id, datos) => ejecutar(() => api.actualizar(id, datos)), [ejecutar])
-  const eliminar = useCallback((id) => ejecutar(() => api.eliminar(id)), [ejecutar])
+  const crear = useCallback((datos) => ejecutarAccion(() => api.crear(datos)), [ejecutarAccion])
+  const actualizar = useCallback((id, datos) => ejecutarAccion(() => api.actualizar(id, datos)), [ejecutarAccion])
+  const eliminar = useCallback((id) => ejecutarAccion(() => api.eliminar(id)), [ejecutarAccion])
   const limpiarError = useCallback(() => setError(null), [])
 
   return { contactos, cargando, error, respaldo, buscar, crear, actualizar, eliminar, limpiarError }

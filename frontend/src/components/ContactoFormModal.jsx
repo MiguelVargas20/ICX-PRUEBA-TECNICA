@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
 
+/*
+ * Modal usado para crear o editar un contacto.
+ * Se conecta con ContactosPage.jsx y valida los datos antes de enviarlos al hook.
+ */
+
 /* Expresiones simples para comprobar que correo y teléfono tengan formatos válidos. */
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const REGEX_TELEFONO = /^[0-9+()\-\s]{7,20}$/
 
 /* Valida los campos antes de enviar información al backend. */
 /* original = el contacto antes de editar (null al crear). */
-function validar(valores, original) {
+function validarDatos(valores, original) {
   const errores = {}
   const nombre = valores.nombre.trim()
   const apellido = valores.apellido.trim()
@@ -36,7 +41,7 @@ function validar(valores, original) {
 }
 
 /* Prepara el objeto JSON que se envía al backend. Crear y editar envían los mismos campos. */
-function prepararDatos(valores) {
+function prepararDatosParaEnviar(valores) {
   return {
     nombre: valores.nombre.trim(),
     apellido: valores.apellido.trim(),
@@ -69,22 +74,22 @@ export default function ContactoFormModal({ contacto, onGuardar, onCerrar, error
   const [guardando, setGuardando] = useState(false)
 
   // Actualiza solo el campo que originó el evento.
-  const cambiar = (evento) => {
+  const actualizarCampo = (evento) => {
     const { name, value } = evento.target
     setValores((valoresActuales) => ({ ...valoresActuales, [name]: value }))
   }
 
   // Se ejecuta cuando el usuario envía el formulario.
-  const enviar = async (evento) => {
+  const guardarFormulario = async (evento) => {
     evento.preventDefault()
 
     // Validar primero evita enviar datos incorrectos al backend.
-    const encontrados = validar(valores, contacto)
+    const encontrados = validarDatos(valores, contacto)
     setErrores(encontrados)
     if (Object.keys(encontrados).length > 0) return
 
        // Crear y editar envían los mismos campos.
-    const datos = prepararDatos(valores)
+    const datos = prepararDatosParaEnviar(valores)
 
     // Bloquea las acciones mientras espera la respuesta de crear o actualizar.
     setGuardando(true)
@@ -96,13 +101,13 @@ export default function ContactoFormModal({ contacto, onGuardar, onCerrar, error
   }
 
   /* Ayuda a mostrar campos repetidos con menos código. */
-  const campo = (nombre, etiqueta, extra = {}) => (
+  const crearCampoFormulario = (nombre, etiqueta, extra = {}) => (
     <Form.Group className="mb-3" controlId={`campo-${nombre}`}>
       <Form.Label>{etiqueta}</Form.Label>
       <Form.Control
         name={nombre}
         value={valores[nombre]}
-        onChange={cambiar}
+        onChange={actualizarCampo}
         isInvalid={Boolean(errores[nombre])}
         {...extra}
       />
@@ -113,7 +118,7 @@ export default function ContactoFormModal({ contacto, onGuardar, onCerrar, error
   return (
     // Modal centrado: no se puede seguir usando la página hasta cerrarlo.
     <Modal show onHide={guardando ? undefined : onCerrar} centered>
-      <Form onSubmit={enviar} noValidate>
+      <Form onSubmit={guardarFormulario} noValidate>
         <Modal.Header closeButton={!guardando}>
           <Modal.Title>{editando ? 'Editar contacto' : 'Nuevo contacto'}</Modal.Title>
         </Modal.Header>
@@ -122,11 +127,11 @@ export default function ContactoFormModal({ contacto, onGuardar, onCerrar, error
           {error && <Alert variant="danger">{error}</Alert>}
 
           {/* Los campos se crean con la función campo para mantener el JSX simple. */}
-          {campo('nombre', 'Nombre *', { autoFocus: true })}
-          {campo('apellido', 'Apellido *')}
-          {campo('ciudad', 'Ciudad')}
-          {campo('correo', 'Correo', { type: 'email' })}
-          {campo('telefono', 'Teléfono', { type: 'tel' })}
+          {crearCampoFormulario('nombre', 'Nombre *', { autoFocus: true })}
+          {crearCampoFormulario('apellido', 'Apellido *')}
+          {crearCampoFormulario('ciudad', 'Ciudad')}
+          {crearCampoFormulario('correo', 'Correo', { type: 'email' })}
+          {crearCampoFormulario('telefono', 'Teléfono', { type: 'tel' })}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onCerrar} disabled={guardando}>

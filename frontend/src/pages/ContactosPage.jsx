@@ -1,34 +1,55 @@
 import { useState } from 'react'
-import { Alert, Button, Container, Modal, Spinner, Toast, ToastContainer } from 'react-bootstrap'
+import { Alert, Button, Container, Modal } from 'react-bootstrap'
 import ContactoFormModal from '../components/ContactoFormModal.jsx'
 import ContactosTabla from '../components/ContactosTabla.jsx'
 import FiltroForm from '../components/FiltroForm.jsx'
 import { useContactos } from '../hooks/useContactos.js'
 
-/* Debe ser igual al LIMITE de ContactoService.java (el backend corta la lista ahí). */
+/*
+ * Archivo principal de la pantalla de contactos.
+ * Une el hook useContactos.js con los componentes de filtros, tabla y formulario.
+ * También decide cuándo mostrar avisos, formularios, confirmaciones y resultados.
+ */
+
+/*
+ * Este valor debe coincidir con LIMITE en ContactoService.java.
+ * Se usa para avisar al usuario cuando Oracle entregó el máximo de registros permitido.
+ */
 const LIMITE_BACKEND = 50
 
-/* "2026-11-04T16:30:00Z" → "4 nov 2026, 11:30 a. m." (en la hora local del navegador). */
+/*
+ * Convierte la fecha de H2 a un texto entendido por el usuario.
+ * El navegador toma su hora local para mostrar fecha y hora.
+ */
 const formatearFecha = (iso) =>
   iso
     ? new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
     : 'fecha desconocida'
 
-    /* Página de administración de contactos. */
+/*
+ * Crea la página completa y guarda en React qué formulario o confirmación está abierto.
+ * El hook useContactos administra los datos; esta función solo conecta esa información con los botones.
+ */
 export default function ContactosPage() {
   const { contactos, cargando, error, respaldo, buscar, crear, actualizar, eliminar, limpiarError } =
     useContactos()
 
-  // Sin conexión con Oracle: solo se puede consultar, no crear / editar / eliminar.
+  /*
+   * Cuando la respuesta viene de H2, solo permitimos consultar.
+   * Crear, editar y eliminar necesitan una conexión activa con Oracle.
+   */
   const soloLectura = Boolean(respaldo)
 
   // null = cerrado | { contacto: null } = crear | { contacto } = editar
   const [formulario, setFormulario] = useState(null)
   const [aEliminar, setAEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
-  const [aviso, setAviso] = useState(null) // mensaje verde de "todo salió bien"
+  const [aviso, setAviso] = useState(null)
 
-  // ---------- Funciones para abrir/cerrar formularios y guardar/eliminar ----------
+  /*
+   * Limpia un error anterior y abre el modal en modo creación.
+   * Al enviar contacto: null, el formulario sabe que debe crear y no editar.
+   */
   const abrirCrear = () => {
     limpiarError()
     setFormulario({ contacto: null })
@@ -43,6 +64,10 @@ export default function ContactosPage() {
   }
 
   const guardar = async (datos) => {
+    /*
+     * Pregunta si el modal estaba editando un registro existente.
+     * Después vuelve a cargar la lista con los filtros guardados por el hook.
+     */
     const editando = Boolean(formulario.contacto)
     const ok = editando ? await actualizar(formulario.contacto.id, datos) : await crear(datos)
     if (ok) setAviso(editando ? 'Contacto actualizado correctamente.' : 'Contacto creado correctamente.')
@@ -50,14 +75,21 @@ export default function ContactosPage() {
   }
 
   const confirmarEliminar = async () => {
+    /*
+     * Indica que la eliminación está en curso, llama al hook y luego cierra el modal.
+     * Si falla, el estado ya contiene el mensaje de error y se muestra como alerta roja.
+     */
     setEliminando(true)
     const ok = await eliminar(aEliminar.id)
     setEliminando(false)
-    setAEliminar(null) // si falló, el mensaje queda en la alerta roja de la página
+    setAEliminar(null)
     if (ok) setAviso('Contacto eliminado correctamente.')
   }
 
-  // Spinner grande solo en la primera carga; después la tabla se queda visible (un poco opaca).
+  /*
+   * En la primera carga todavía no hay contactos.
+   * Con este valor evitamos mostrar el texto de lista vacía mientras estamos esperando.
+   */
   const primeraCarga = cargando && contactos.length === 0
 
   return (
@@ -67,7 +99,7 @@ export default function ContactosPage() {
         <Container className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
           <div>
             <h1 className="h2 mb-1">Contactos ICX</h1>
-            <p className="mb-0">Consulta y administra los contactos de Oracle Service Cloud</p>
+            <p className="mb-0">Consulta, crea y actualiza tus contactos desde aquí.</p>
           </div>
           <Button
             className="btn-nuevo"
@@ -76,7 +108,7 @@ export default function ContactosPage() {
             disabled={soloLectura}
             title={soloLectura ? 'No disponible sin conexión con Oracle' : undefined}
           >
-            + Nuevo contacto
+            Agregar contacto
           </Button>
         </Container>
       </header>
@@ -114,19 +146,24 @@ export default function ContactosPage() {
           </Alert>
         )}
 
+        {/* Aviso simple de la última acción realizada. Se cierra al pulsar la X. */}
+        {aviso && (
+          <Alert variant="success" dismissible onClose={() => setAviso(null)} className="mb-4">
+            {aviso}
+          </Alert>
+        )}
+
         {/* ---------- Resultados ---------- */}
         <section className="tarjeta p-3 p-md-4" aria-label="Resultados">
           {primeraCarga ? (
             <div className="text-center py-5">
-              <Spinner animation="border" role="status" variant="warning">
-                <span className="visually-hidden">Cargando...</span>
-              </Spinner>
+              <p className="mb-0 text-muted">Cargando contactos...</p>
             </div>
           ) : contactos.length === 0 ? (
             !error && (
               <div className="text-center text-muted py-5">
                 <p className="h5 mb-1">No se encontraron contactos</p>
-                <p className="mb-0">Prueba con otros filtros o pulsa «Limpiar».</p>
+                <p className="mb-0">Cambia los filtros o pulsa «Limpiar» para volver a buscar.</p>
               </div>
             )
           ) : (
@@ -135,9 +172,9 @@ export default function ContactosPage() {
                 <h2 className="h6 text-uppercase text-secondary mb-0">
                   {contactos.length} {contactos.length === 1 ? 'resultado' : 'resultados'}
                 </h2>
-                {cargando && <Spinner size="sm" animation="border" variant="warning" />}
+                {cargando && <span className="small text-muted">Actualizando...</span>}
               </div>
-              <div style={{ opacity: cargando ? 0.5 : 1, transition: 'opacity .2s' }}>
+              <div>
                 <ContactosTabla
                   contactos={contactos}
                   onEditar={abrirEditar}
@@ -165,7 +202,12 @@ export default function ContactosPage() {
       )}
 
       {/* ---------- Confirmar eliminación ---------- */}
-      <Modal show={Boolean(aEliminar)} onHide={eliminando ? undefined : () => setAEliminar(null)} centered>
+      <Modal
+        show={Boolean(aEliminar)}
+        onHide={eliminando ? undefined : () => setAEliminar(null)}
+        animation={false}
+        centered
+      >
         <Modal.Header closeButton={!eliminando}>
           <Modal.Title>Eliminar contacto</Modal.Title>
         </Modal.Header>
@@ -179,18 +221,11 @@ export default function ContactosPage() {
             Cancelar
           </Button>
           <Button variant="danger" onClick={confirmarEliminar} disabled={eliminando}>
-            {eliminando && <Spinner size="sm" className="me-2" />}
-            Eliminar
+            {eliminando ? 'Eliminando...' : 'Eliminar'}
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* ---------- Aviso de éxito (se cierra solo) ---------- */}
-      <ToastContainer position="bottom-end" className="p-3 position-fixed">
-        <Toast bg="success" show={Boolean(aviso)} onClose={() => setAviso(null)} delay={3500} autohide>
-          <Toast.Body className="text-white fw-semibold">{aviso}</Toast.Body>
-        </Toast>
-      </ToastContainer>
     </>
   )
 }

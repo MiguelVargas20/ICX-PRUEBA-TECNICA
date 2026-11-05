@@ -1,6 +1,7 @@
 /*
- * Único archivo que habla con el backend.
- * El backend siempre responde los errores con la forma { estado, mensaje, codigoOracle }.
+ * Centraliza las llamadas HTTP hacia el backend /api/contactos.
+ * Se conecta con useContactos.js y convierte respuestas o fallos de red
+ * en errores que la interfaz puede mostrar de forma clara.
  */
 const BASE = '/api/contactos'
 
@@ -18,7 +19,7 @@ const MENSAJE_SIN_SERVIDOR =
   'No se pudo comunicar con el servidor. Verifica que el backend esté encendido.'
 
 /* Hace el fetch y convierte cualquier fallo en un ErrorApi. */
-async function pedir(url, opciones) {
+async function realizarPeticion(url, opciones) {
   let respuesta
   try {
     respuesta = await fetch(url, opciones)
@@ -70,13 +71,13 @@ export async function buscar(filtros = {}) {
     if (valor && valor.trim()) params.set(clave, valor.trim())
   })
   const consulta = params.toString()
-  const respuesta = await pedir(consulta ? `${BASE}?${consulta}` : BASE)
+  const respuesta = await realizarPeticion(consulta ? `${BASE}?${consulta}` : BASE)
   return leerJson(respuesta)
 }
 
 /* POST /api/contactos → 201 con el contacto creado */
 export async function crear(datos) {
-  const respuesta = await pedir(BASE, {
+  const respuesta = await realizarPeticion(BASE, {
     method: 'POST',
     headers: JSON_HEADERS,
     body: JSON.stringify(datos),
@@ -86,7 +87,7 @@ export async function crear(datos) {
 
 /* PUT /api/contactos/{id} → 204 (solo nombre, apellido y ciudad) */
 export async function actualizar(id, datos) {
-  await pedir(`${BASE}/${encodeURIComponent(id)}`, {
+  await realizarPeticion(`${BASE}/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: JSON_HEADERS,
     body: JSON.stringify(datos),
@@ -95,5 +96,5 @@ export async function actualizar(id, datos) {
 
 /* DELETE /api/contactos/{id} → 204 */
 export async function eliminar(id) {
-  await pedir(`${BASE}/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  await realizarPeticion(`${BASE}/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
