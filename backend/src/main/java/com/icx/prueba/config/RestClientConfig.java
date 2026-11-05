@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
 
 /* Configuración del cliente REST para conectarse a la API de Oracle. */
 @Configuration
@@ -32,7 +33,8 @@ public class RestClientConfig {
          */
         return RestClient.builder()
                 .baseUrl(props.baseUrl())
-                .requestFactory(factory)
+                /* Buffering: envía el cuerpo completo con Content-Length; Oracle no acepta cuerpos "por partes" (chunked). */
+                .requestFactory(new BufferingClientHttpRequestFactory(factory))
                 .defaultHeaders(h -> {
                     h.setBasicAuth(props.user(), props.password());
                     h.set("OSvC-CREST-Application-Context", props.contextHeader());

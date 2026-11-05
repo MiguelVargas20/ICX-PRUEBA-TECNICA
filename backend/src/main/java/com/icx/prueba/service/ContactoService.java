@@ -297,7 +297,6 @@ public class ContactoService {
     /* Convierte los resultados de la consulta en una lista de DTOs. */
     private List<ContactoDto> convertir(QueryResultsResponse respuesta) {
         if (respuesta == null || respuesta.items() == null || respuesta.items().isEmpty()) {
-            // Oracle puede responder sin datos; en ese caso se representa como lista vacía.
             return List.of();
         }
 
@@ -309,34 +308,41 @@ public class ContactoService {
 
         /* Obtener los nombres de las columnas */
         List<String> columnas = item.columnNames();
-        // Un contacto con varios correos o teléfonos puede salir en varias filas: se deja la primera.
+        // Un contacto con varios correos o teléfonos puede salir en varias filas: se combinan en uno solo.
         Map<String, ContactoDto> porId = new LinkedHashMap<>();
 
         /* Recorrer las filas de resultados */
         for (List<Object> fila : item.rows()) {
             Map<String, String> valores = new HashMap<>();
-            /*
-             * QueryResults devuelve una fila como lista: primero viene el valor,
-             * luego el siguiente, según el orden de columnNames.
-             * Este ciclo convierte posiciones en pares nombre -> valor.
-             */
             for (int i = 0; i < columnas.size(); i++) {
                 Object valor = fila.get(i);
                 valores.put(columnas.get(i), valor == null ? null : String.valueOf(valor));
             }
 
-            /* Crear un DTO para cada contacto */
+            /* Crear un DTO para cada fila */
             String id = valores.get("id");
-            porId.putIfAbsent(id, new ContactoDto(
+            ContactoDto nuevo = new ContactoDto(
                     id,
                     valores.get("first"),
                     valores.get("last"),
                     valores.get("city"),
                     valores.get("address"),
-                    valores.get("number")));
+                    valores.get("number"));
+
+            /* Si el contacto ya salió en otra fila, se combinan para no perder el correo o el teléfono. */
+            ContactoDto anterior = porId.get(id);
+            porId.put(id, anterior == null ? nuevo : combinar(anterior, nuevo));
         }
 
         /* Devolver la lista de DTOs */
         return new ArrayList<>(porId.values());
+    }
+
+    /* Une dos filas del mismo contacto: se queda con el primer correo y el primer teléfono que no estén vacíos. */
+    private ContactoDto combinar(ContactoDto a, ContactoDto b) {
+        return new ContactoDto(
+                a.id(), a.nombre(), a.apellido(), a.ciudad(),
+                a.correo() != null ? a.correo() : b.correo(),
+                a.telefono() != null ? a.telefono() : b.telefono());
     }
 }
