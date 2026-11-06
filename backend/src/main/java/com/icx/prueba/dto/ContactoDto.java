@@ -1,11 +1,9 @@
 package com.icx.prueba.dto;
 
-/* DTO para representar un contacto. */
-/*
- * Este objeto es lo que se devuelve al frontend, independientemente de si
- * los datos vinieron de Oracle o de la base H2 de respaldo.
- * Los campos conservan los nombres esperados por las tablas y formularios.
- */
+// Un contacto como se lo mando al frontend.
+// Es igual venga de Oracle o del respaldo en H2.
+// Ojo: estos nombres son los mismos que lee el frontend (contacto.nombre, contacto.correo...),
+// si se cambian aquí hay que cambiarlos allá también.
 public record ContactoDto(
         String id,
         String nombre,

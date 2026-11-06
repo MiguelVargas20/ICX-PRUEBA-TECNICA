@@ -1,8 +1,7 @@
 import ContactosPage from './pages/ContactosPage.jsx'
 
-/* Componente raíz: contiene la única página visible de la aplicación. */
+// Componente principal. Como solo hay una pantalla, muestra directamente ContactosPage.
+// Si después hubiera más páginas, aquí iría el router.
 export default function App() {
-  // React recibe el resultado y lo renderiza dentro de esta etiqueta.
-  // ContactosPage reúne el encabezado, filtros, tabla, modales y mensajes.
   return <ContactosPage />
 }

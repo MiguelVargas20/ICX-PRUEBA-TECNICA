@@ -4,17 +4,11 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-/*
- * Spring Data crea la implementación sola: no hay que escribir SQL.
- * JpaRepository ya trae saveAll, deleteAllInBatch, count, etc.
- */
+// Repositorio de la tabla contacto_respaldo.
+// JpaRepository ya trae saveAll, deleteAllInBatch, findAll, etc., no hay que escribir SQL.
 public interface ContactoRespaldoRepository extends JpaRepository<ContactoRespaldo, String> {
 
-    /* Spring entiende el nombre del método y genera: SELECT ... ORDER BY orden ASC */
-    /*
-     * findAll... es una convención de Spring Data.
-     * Por OrderByOrdenAsc garantiza que se devuelva el respaldo en el mismo
-     * orden en que aparecieron los contactos en la consulta de Oracle.
-     */
+    // Spring arma la consulta a partir del nombre del método:
+    // trae todos ordenados por la columna "orden" (SELECT ... ORDER BY orden ASC)
     List<ContactoRespaldo> findAllByOrderByOrdenAsc();
 }

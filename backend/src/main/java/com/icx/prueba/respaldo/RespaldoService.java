@@ -11,10 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.icx.prueba.dto.ContactoDto;
 import com.icx.prueba.dto.ResultadoBusqueda;
 
-/*
- * Todo lo que tiene que ver con la base de datos de respaldo (H2) está aquí.
- * ContactoService no sabe cómo se guarda: solo llama a guardar() y leer().
- */
+// Todo lo de la base de respaldo (H2) está aquí.
+// ContactoService solo llama guardar() y leer(), no sabe cómo se guarda.
 @Service
 public class RespaldoService {
 
@@ -26,17 +24,12 @@ public class RespaldoService {
         this.consulta = consulta;
     }
 
-    /*
-     * Reemplaza el respaldo por el resultado de la consulta que acaba de salir bien.
-     * @Transactional: se borra lo viejo y se guarda lo nuevo en UN solo paso.
-     * Si algo falla a la mitad, se deshace todo y el respaldo anterior queda intacto.
-     */
+    // Cambia el respaldo por el resultado de la consulta que acaba de salir bien.
+    // @Transactional: borrar lo viejo y guardar lo nuevo pasa todo junto.
+    // Si algo falla a la mitad se deshace todo y queda el respaldo anterior,
+    // así nunca queda la tabla vacía o a medias.
     @Transactional
     public void guardar(List<ContactoDto> resultado, String filtros) {
-        /*
-         * Primero se elimina el respaldo anterior completo.
-         * Luego se guarda la lista nueva y la información de su consulta.
-         */
         contactos.deleteAllInBatch();
 
         List<ContactoRespaldo> filas = new ArrayList<>();
@@ -45,11 +38,12 @@ public class RespaldoService {
         }
         contactos.saveAll(filas);
 
-        /* save() con el mismo id (1) actualiza la fila en vez de crear otra. */
+        // Como el id siempre es 1, save() actualiza esa fila en vez de crear otra
         consulta.save(new ConsultaRespaldo(Instant.now(), filtros));
     }
 
-    /* Devuelve la última consulta guardada, o vacío si nunca se ha guardado ninguna. */
+    // Devuelve la última consulta guardada.
+    // Uso Optional porque si nunca se ha guardado nada, viene vacío.
     @Transactional(readOnly = true)
     public Optional<ResultadoBusqueda> leer() {
         return consulta.findById(ConsultaRespaldo.ID_UNICO).map(info -> {

@@ -7,17 +7,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/*
- * Tabla CONSULTA_RESPALDO en H2. Siempre tiene UNA sola fila (id = 1).
- * Guarda CUÁNDO se hizo la última consulta y CON QUÉ filtros,
- * así el usuario sabe qué está viendo cuando Oracle está caído.
- * (Se guarda aparte para no perder la fecha aunque la consulta haya traído 0 contactos.)
- */
+// Tabla consulta_respaldo en H2. Siempre tiene una sola fila (id = 1).
+// Guarda cuándo fue la última consulta y con qué filtros, para mostrarlo en el aviso
+// cuando Oracle está caído.
+// La dejé aparte de los contactos para no perder la fecha si la consulta trajo 0 contactos.
 @Entity
 @Table(name = "consulta_respaldo")
 public class ConsultaRespaldo {
 
-    /* Id fijo: solo nos interesa la última consulta, no el historial. */
+    // Id fijo porque solo me interesa la última consulta, no un historial
     public static final long ID_UNICO = 1L;
 
     @Id
@@ -26,18 +24,14 @@ public class ConsultaRespaldo {
     @Column(nullable = false)
     private Instant fecha;
 
-    /* Texto legible de los filtros, ej: "ciudad: Bogotá, nombre: Ana" o "sin filtros". */
+    // Texto de los filtros, ej: "ciudad: Bogotá, nombre: Ana" o "sin filtros"
     @Column(length = 400)
     private String filtros;
 
+    // JPA necesita un constructor vacío para armar el objeto cuando lee de la base
     protected ConsultaRespaldo() {
     }
 
-    /*
-     * Constructor normal usado por RespaldoService.
-     * El constructor protegido vacío existe para que JPA pueda reconstruir
-     * una entidad desde la base de datos.
-     */
     public ConsultaRespaldo(Instant fecha, String filtros) {
         this.id = ID_UNICO;
         this.fecha = fecha;

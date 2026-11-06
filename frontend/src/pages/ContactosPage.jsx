@@ -1,34 +1,39 @@
 import { useState } from 'react'
-import { Alert, Button, Container, Modal, Spinner, Toast, ToastContainer } from 'react-bootstrap'
+import { Alert, Button, Container, Modal } from 'react-bootstrap'
 import ContactoFormModal from '../components/ContactoFormModal.jsx'
 import ContactosTabla from '../components/ContactosTabla.jsx'
 import FiltroForm from '../components/FiltroForm.jsx'
 import { useContactos } from '../hooks/useContactos.js'
 
-/* Debe ser igual al LIMITE de ContactoService.java (el backend corta la lista ahí). */
+// Pantalla principal de contactos.
+// Toma los datos y acciones del hook useContactos y se los pasa a los componentes
+// (filtros, tabla, formulario). También decide qué avisos y modales se muestran.
+
+// Tiene que ser el mismo número que LIMITE en ContactoService.java
 const LIMITE_BACKEND = 50
 
-/* "2026-11-04T16:30:00Z" → "4 nov 2026, 11:30 a. m." (en la hora local del navegador). */
+// Pasa la fecha del respaldo a un texto legible, con la hora de Colombia del navegador
 const formatearFecha = (iso) =>
   iso
     ? new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
     : 'fecha desconocida'
 
-    /* Página de administración de contactos. */
 export default function ContactosPage() {
   const { contactos, cargando, error, respaldo, buscar, crear, actualizar, eliminar, limpiarError } =
     useContactos()
 
-  // Sin conexión con Oracle: solo se puede consultar, no crear / editar / eliminar.
+  // Si los datos vienen del respaldo solo se puede consultar.
+  // Crear, editar y eliminar necesitan que Oracle esté funcionando.
   const soloLectura = Boolean(respaldo)
 
   // null = cerrado | { contacto: null } = crear | { contacto } = editar
   const [formulario, setFormulario] = useState(null)
+  // El contacto que se va a eliminar (si tiene valor se abre la confirmación)
   const [aEliminar, setAEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
-  const [aviso, setAviso] = useState(null) // mensaje verde de "todo salió bien"
+  // Mensaje verde después de crear, editar o eliminar
+  const [aviso, setAviso] = useState(null)
 
-  // ---------- Funciones para abrir/cerrar formularios y guardar/eliminar ----------
   const abrirCrear = () => {
     limpiarError()
     setFormulario({ contacto: null })
@@ -42,6 +47,7 @@ export default function ContactosPage() {
     setFormulario(null)
   }
 
+  // La llama el formulario al guardar. Si hay contacto es editar, si no es crear.
   const guardar = async (datos) => {
     const editando = Boolean(formulario.contacto)
     const ok = editando ? await actualizar(formulario.contacto.id, datos) : await crear(datos)
@@ -53,21 +59,22 @@ export default function ContactosPage() {
     setEliminando(true)
     const ok = await eliminar(aEliminar.id)
     setEliminando(false)
-    setAEliminar(null) // si falló, el mensaje queda en la alerta roja de la página
+    setAEliminar(null)
+    // Si falla, el error ya quedó guardado en el hook y sale la alerta roja
     if (ok) setAviso('Contacto eliminado correctamente.')
   }
 
-  // Spinner grande solo en la primera carga; después la tabla se queda visible (un poco opaca).
+  // Para mostrar "Cargando..." solo la primera vez y no "No se encontraron contactos"
   const primeraCarga = cargando && contactos.length === 0
 
   return (
     <>
-      {/* ---------- Encabezado ---------- */}
+      {/* Encabezado */}
       <header className="encabezado-icx">
         <Container className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
           <div>
             <h1 className="h2 mb-1">Contactos ICX</h1>
-            <p className="mb-0">Consulta y administra los contactos de Oracle Service Cloud</p>
+            <p className="mb-0">Consulta, crea y actualiza tus contactos desde aquí.</p>
           </div>
           <Button
             className="btn-nuevo"
@@ -76,18 +83,18 @@ export default function ContactosPage() {
             disabled={soloLectura}
             title={soloLectura ? 'No disponible sin conexión con Oracle' : undefined}
           >
-            + Nuevo contacto
+            Agregar contacto
           </Button>
         </Container>
       </header>
 
       <Container className="pb-5">
-        {/* ---------- Filtros ---------- */}
+        {/* Filtros */}
         <section className="tarjeta tarjeta-filtros p-3 p-md-4 mb-4" aria-label="Filtros de búsqueda">
           <FiltroForm onBuscar={buscar} deshabilitado={cargando} />
         </section>
 
-        {/* ---------- Aviso de modo respaldo (Oracle desconectado) ---------- */}
+        {/* Aviso amarillo cuando Oracle no responde y se muestra el respaldo */}
         {respaldo && (
           <Alert variant="warning" className="d-flex flex-column flex-md-row gap-2 justify-content-between">
             <div>
@@ -107,26 +114,30 @@ export default function ContactosPage() {
           </Alert>
         )}
 
-        {/* Con el formulario abierto, el error se muestra dentro del modal */}
+        {/* Si el formulario está abierto, el error se muestra dentro del modal y no aquí */}
         {error && !formulario && (
           <Alert variant="danger" dismissible onClose={limpiarError}>
             {error}
           </Alert>
         )}
 
-        {/* ---------- Resultados ---------- */}
+        {aviso && (
+          <Alert variant="success" dismissible onClose={() => setAviso(null)} className="mb-4">
+            {aviso}
+          </Alert>
+        )}
+
+        {/* Resultados */}
         <section className="tarjeta p-3 p-md-4" aria-label="Resultados">
           {primeraCarga ? (
             <div className="text-center py-5">
-              <Spinner animation="border" role="status" variant="warning">
-                <span className="visually-hidden">Cargando...</span>
-              </Spinner>
+              <p className="mb-0 text-muted">Cargando contactos...</p>
             </div>
           ) : contactos.length === 0 ? (
             !error && (
               <div className="text-center text-muted py-5">
                 <p className="h5 mb-1">No se encontraron contactos</p>
-                <p className="mb-0">Prueba con otros filtros o pulsa «Limpiar».</p>
+                <p className="mb-0">Cambia los filtros o pulsa «Limpiar» para volver a buscar.</p>
               </div>
             )
           ) : (
@@ -135,9 +146,9 @@ export default function ContactosPage() {
                 <h2 className="h6 text-uppercase text-secondary mb-0">
                   {contactos.length} {contactos.length === 1 ? 'resultado' : 'resultados'}
                 </h2>
-                {cargando && <Spinner size="sm" animation="border" variant="warning" />}
+                {cargando && <span className="small text-muted">Actualizando...</span>}
               </div>
-              <div style={{ opacity: cargando ? 0.5 : 1, transition: 'opacity .2s' }}>
+              <div>
                 <ContactosTabla
                   contactos={contactos}
                   onEditar={abrirEditar}
@@ -145,6 +156,7 @@ export default function ContactosPage() {
                   soloLectura={soloLectura}
                 />
               </div>
+              {/* Si llegaron 50 es porque puede haber más, entonces aviso que usen los filtros */}
               {contactos.length >= LIMITE_BACKEND && (
                 <p className="small text-muted mt-3 mb-0">
                   Mostrando los primeros {LIMITE_BACKEND} resultados. Usa los filtros para afinar la búsqueda.
@@ -155,6 +167,7 @@ export default function ContactosPage() {
         </section>
       </Container>
 
+      {/* El modal solo se monta cuando está abierto, así siempre arranca con los datos correctos */}
       {formulario && (
         <ContactoFormModal
           contacto={formulario.contacto}
@@ -164,8 +177,13 @@ export default function ContactosPage() {
         />
       )}
 
-      {/* ---------- Confirmar eliminación ---------- */}
-      <Modal show={Boolean(aEliminar)} onHide={eliminando ? undefined : () => setAEliminar(null)} centered>
+      {/* Confirmación antes de eliminar */}
+      <Modal
+        show={Boolean(aEliminar)}
+        onHide={eliminando ? undefined : () => setAEliminar(null)}
+        animation={false}
+        centered
+      >
         <Modal.Header closeButton={!eliminando}>
           <Modal.Title>Eliminar contacto</Modal.Title>
         </Modal.Header>
@@ -179,18 +197,11 @@ export default function ContactosPage() {
             Cancelar
           </Button>
           <Button variant="danger" onClick={confirmarEliminar} disabled={eliminando}>
-            {eliminando && <Spinner size="sm" className="me-2" />}
-            Eliminar
+            {eliminando ? 'Eliminando...' : 'Eliminar'}
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* ---------- Aviso de éxito (se cierra solo) ---------- */}
-      <ToastContainer position="bottom-end" className="p-3 position-fixed">
-        <Toast bg="success" show={Boolean(aviso)} onClose={() => setAviso(null)} delay={3500} autohide>
-          <Toast.Body className="text-white fw-semibold">{aviso}</Toast.Body>
-        </Toast>
-      </ToastContainer>
     </>
   )
 }

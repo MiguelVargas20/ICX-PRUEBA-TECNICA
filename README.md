@@ -76,7 +76,7 @@ Así el frontend siempre muestra un mensaje claro al usuario. Además, los formu
 
 ## Flujo de trabajo con Git
 
-- `main`: versiones entregadas (con tags `v1.0.0`, `v1.0.1`).
+- `main`: versiones entregadas, cada una con su tag (`v1.0.0`, `v1.0.1`, `v1.1.0`).
 - `develop`: integración.
 - Una rama por tarea (`feat/`, `fix/`, `docs/`, `chore/`) que se une a `develop` con Pull Request.
 
