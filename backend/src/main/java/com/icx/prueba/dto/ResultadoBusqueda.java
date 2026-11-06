@@ -3,30 +3,23 @@ package com.icx.prueba.dto;
 import java.time.Instant;
 import java.util.List;
 
-/*
- * Lo que devuelve GET /api/contactos.
- * Además de la lista, le dice al frontend DE DÓNDE salieron los datos:
- *  - desdeRespaldo = false → vienen de Oracle (datos en vivo).
- *  - desdeRespaldo = true  → Oracle no respondió y se muestra la última consulta guardada en H2.
- */
+// Lo que responde GET /api/contactos.
+// Además de la lista le dice al frontend de dónde salieron los datos:
+//   desdeRespaldo = false -> vienen de Oracle
+//   desdeRespaldo = true  -> Oracle no respondió y son los de la última consulta guardada en H2
+// En ese caso también van la fecha y los filtros de esa consulta para mostrarlos en el aviso.
 public record ResultadoBusqueda(
         List<ContactoDto> contactos,
         boolean desdeRespaldo,
         Instant fechaRespaldo,
         String filtrosRespaldo) {
 
-    /*
-     * Fábrica para una respuesta normal. Los otros tres campos quedan null
-     * porque no se está mostrando una copia de la base de respaldo.
-     */
+    // Respuesta normal con datos de Oracle (lo del respaldo queda en null)
     public static ResultadoBusqueda desdeOracle(List<ContactoDto> contactos) {
         return new ResultadoBusqueda(contactos, false, null, null);
     }
 
-    /*
-     * Fábrica para modo de contingencia. Include fecha y filtros para que el
-     * frontend explique claramente qué consulta se pudo recuperar.
-     */
+    // Respuesta con los datos guardados en H2
     public static ResultadoBusqueda desdeRespaldo(List<ContactoDto> contactos, Instant fecha, String filtros) {
         return new ResultadoBusqueda(contactos, true, fecha, filtros);
     }

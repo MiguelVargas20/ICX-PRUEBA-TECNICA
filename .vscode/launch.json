@@ -4,11 +4,11 @@
       "type": "java",
       "name": "Spring Boot-PruebaApplication<prueba>",
       "request": "launch",
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/backend",
       "mainClass": "com.icx.prueba.PruebaApplication",
       "projectName": "prueba",
       "args": "",
-      "envFile": "${workspaceFolder}/.env"
+      "envFile": "${workspaceFolder}/backend/.env"
     }
   ]
 }

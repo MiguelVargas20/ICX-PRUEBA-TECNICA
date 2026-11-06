@@ -1,18 +1,16 @@
 package com.icx.prueba.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
-/* Datos que llegan del formulario para ACTUALIZAR un contacto. */
-/*
- * Separar ContactoRequest y ContactoUpdate ayuda a expresar las diferencias
- * entre crear y editar sin mezclar reglas de ambos procesos.
- */
+// Datos que llegan del formulario para EDITAR un contacto.
+// Lo dejé separado de ContactoRequest porque al editar la ciudad se maneja distinto
+// (si llega vacía se borra en Oracle).
 public record ContactoUpdate(
 
-        /* Nombre y apellido siguen siendo obligatorios al editar. */
+        // Nombre y apellido siguen siendo obligatorios al editar
         @NotBlank(message = "El nombre es obligatorio.")
         @Size(max = 80, message = "El nombre no puede pasar de 80 caracteres.")
         String nombre,
@@ -21,10 +19,11 @@ public record ContactoUpdate(
         @Size(max = 80, message = "El apellido no puede pasar de 80 caracteres.")
         String apellido,
 
-        /* null significa que ciudad no llegó; texto vacío significa solicitar su borrado. */
+        // null = no se toca la ciudad. Vacía ("") = se borra en Oracle.
+        @Size(max = 80, message = "La ciudad no puede pasar de 80 caracteres.")
         String ciudad,
 
-        /* Mismas reglas que al crear (ContactoRequest). Vacío = no se cambia. */
+        // Mismas reglas que al crear. Si llegan vacíos no se cambian en Oracle.
         @Email(message = "El correo no tiene un formato válido.")
         String correo,
 
