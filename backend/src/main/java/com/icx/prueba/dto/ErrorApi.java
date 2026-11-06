@@ -1,11 +1,9 @@
 package com.icx.prueba.dto;
 
-/* Forma única de TODOS los errores que el backend le devuelve al frontend. */
-/*
- * estado contiene el mismo código HTTP que retorna la respuesta.
- * mensaje explica el problema de forma entendible.
- * codigoOracle permite mostrar o registrar el identificador específico de Oracle.
- */
+// Así responde el backend cuando hay un error, siempre con esta misma forma.
+// estado: el código HTTP (400, 404, 503...)
+// mensaje: el texto que se le muestra al usuario
+// codigoOracle: el código de error de Oracle (OSC-CREST-...) si lo hay, si no null
 public record ErrorApi(
         int estado,
         String mensaje,

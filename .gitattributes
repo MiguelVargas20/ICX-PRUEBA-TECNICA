@@ -1,0 +1,3 @@
+# Guarda los archivos de texto con saltos de línea iguales (LF) en el repositorio,
+# así no salen todos los archivos como modificados al editarlos en Windows.
+* text=auto

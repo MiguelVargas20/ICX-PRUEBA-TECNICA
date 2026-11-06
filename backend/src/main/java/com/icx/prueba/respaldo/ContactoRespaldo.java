@@ -7,16 +7,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/*
- * Tabla CONTACTO_RESPALDO en H2.
- * Cada fila es un contacto que llegó en la ÚLTIMA consulta exitosa a Oracle.
- * Cuando Oracle no responde, el backend lee esta tabla en lugar de Oracle.
- */
+// Tabla contacto_respaldo en H2.
+// Cada fila es un contacto de la última consulta que salió bien en Oracle.
+// Si Oracle se cae, el backend lee esta tabla.
 @Entity
 @Table(name = "contacto_respaldo")
 public class ContactoRespaldo {
 
-    /* Usamos el mismo id que tiene el contacto en Oracle. */
+    // Uso el mismo id que tiene el contacto en Oracle
     @Id
     private String id;
 
@@ -26,15 +24,15 @@ public class ContactoRespaldo {
     private String correo;
     private String telefono;
 
-    /* Posición en la que venía en la consulta, para mostrarlos en el mismo orden. */
+    // Posición del contacto en la consulta, para mostrarlos en el mismo orden
     @Column(nullable = false)
     private int orden;
 
-    /* JPA necesita un constructor vacío para poder crear el objeto al leer de la BD. */
+    // JPA necesita un constructor vacío para armar el objeto cuando lee de la base
     protected ContactoRespaldo() {
     }
 
-    /* Convierte un ContactoDto (lo que devolvió Oracle) en una fila para guardar. */
+    // Pasa un ContactoDto (lo que llegó de Oracle) a una fila para guardar
     public static ContactoRespaldo desde(ContactoDto dto, int orden) {
         ContactoRespaldo fila = new ContactoRespaldo();
         fila.id = dto.id();
@@ -47,7 +45,7 @@ public class ContactoRespaldo {
         return fila;
     }
 
-    /* Convierte la fila guardada otra vez en ContactoDto (lo que entiende el frontend). */
+    // Lo contrario: pasa la fila guardada a ContactoDto para mandarla al frontend
     public ContactoDto aDto() {
         return new ContactoDto(id, nombre, apellido, ciudad, correo, telefono);
     }

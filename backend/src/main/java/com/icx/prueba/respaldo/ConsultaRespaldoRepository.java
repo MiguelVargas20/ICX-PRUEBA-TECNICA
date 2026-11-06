@@ -2,6 +2,7 @@ package com.icx.prueba.respaldo;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-/* Acceso a la fila única con la fecha y los filtros de la última consulta. */
+// Repositorio de la tabla consulta_respaldo.
+// No tiene código porque JpaRepository ya trae save, findById, etc.
 public interface ConsultaRespaldoRepository extends JpaRepository<ConsultaRespaldo, Long> {
 }

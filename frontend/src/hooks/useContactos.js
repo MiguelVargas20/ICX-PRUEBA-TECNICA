@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as api from '../services/contactosApi'
 
-/*
- * Guarda y administra el estado de contactos que usa la página.
- * Se conecta con la página ContactosPage.jsx y el servicio contactosApi.js:
- * contiene la lista, el cargando, los errores, el respaldo y las acciones CRUD.
- */
+// Hook con el estado y las acciones de los contactos.
+// ContactosPage lo usa y no tiene que saber cómo se llama al backend.
+// Guarda: la lista, si está cargando, el error y si los datos vienen del respaldo.
 export function useContactos() {
   const [contactos, setContactos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  // null = datos en vivo de Oracle | { fecha, filtros } = datos de la BD de respaldo
+  // null = datos de Oracle | { fecha, filtros } = datos del respaldo H2
   const [respaldo, setRespaldo] = useState(null)
+  // Los últimos filtros. Uso useRef y no useState porque cambiarlos no tiene que
+  // volver a pintar la pantalla, solo los necesito para repetir la búsqueda
   const filtrosActuales = useRef({})
 
-  /* Pone en el estado lo que respondió el backend (venga de Oracle o del respaldo). */
+  // Guarda en el estado lo que respondió el backend
   const mostrarResultado = useCallback((resultado) => {
     setContactos(resultado.contactos ?? [])
     setRespaldo(
@@ -24,7 +24,8 @@ export function useContactos() {
     )
   }, [])
 
-  /* Primera carga (sin filtros). Empieza con cargando = true, por eso no hay setState al inicio. */
+  // Primera carga al abrir la página, sin filtros.
+  // "activo" es para no cambiar el estado si el componente ya se desmontó
   useEffect(() => {
     let activo = true
     api
@@ -37,7 +38,7 @@ export function useContactos() {
     }
   }, [mostrarResultado])
 
-  /* Busca con los filtros dados; sin argumento repite la última búsqueda. */
+  // Busca con los filtros que le pasen. Si no le paso nada, repite la última búsqueda
   const buscar = useCallback(
     async (filtros = filtrosActuales.current) => {
       filtrosActuales.current = filtros
@@ -48,13 +49,16 @@ export function useContactos() {
       } catch (e) {
         setError(e.message)
       } finally {
+        // finally se ejecuta siempre, salga bien o mal
         setCargando(false)
       }
     },
     [mostrarResultado],
   )
 
-  /* Ejecuta una acción; si sale bien recarga la lista. Devuelve true/false. */
+  // La uso para crear, editar y eliminar.
+  // Si sale bien vuelvo a buscar para que la tabla quede actualizada.
+  // Devuelve true o false para que el formulario sepa si se cierra o no.
   const ejecutarAccion = useCallback(
     async (accion) => {
       setError(null)

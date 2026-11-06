@@ -5,51 +5,35 @@ import ContactosTabla from '../components/ContactosTabla.jsx'
 import FiltroForm from '../components/FiltroForm.jsx'
 import { useContactos } from '../hooks/useContactos.js'
 
-/*
- * Archivo principal de la pantalla de contactos.
- * Une el hook useContactos.js con los componentes de filtros, tabla y formulario.
- * También decide cuándo mostrar avisos, formularios, confirmaciones y resultados.
- */
+// Pantalla principal de contactos.
+// Toma los datos y acciones del hook useContactos y se los pasa a los componentes
+// (filtros, tabla, formulario). También decide qué avisos y modales se muestran.
 
-/*
- * Este valor debe coincidir con LIMITE en ContactoService.java.
- * Se usa para avisar al usuario cuando Oracle entregó el máximo de registros permitido.
- */
+// Tiene que ser el mismo número que LIMITE en ContactoService.java
 const LIMITE_BACKEND = 50
 
-/*
- * Convierte la fecha de H2 a un texto entendido por el usuario.
- * El navegador toma su hora local para mostrar fecha y hora.
- */
+// Pasa la fecha del respaldo a un texto legible, con la hora de Colombia del navegador
 const formatearFecha = (iso) =>
   iso
     ? new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
     : 'fecha desconocida'
 
-/*
- * Crea la página completa y guarda en React qué formulario o confirmación está abierto.
- * El hook useContactos administra los datos; esta función solo conecta esa información con los botones.
- */
 export default function ContactosPage() {
   const { contactos, cargando, error, respaldo, buscar, crear, actualizar, eliminar, limpiarError } =
     useContactos()
 
-  /*
-   * Cuando la respuesta viene de H2, solo permitimos consultar.
-   * Crear, editar y eliminar necesitan una conexión activa con Oracle.
-   */
+  // Si los datos vienen del respaldo solo se puede consultar.
+  // Crear, editar y eliminar necesitan que Oracle esté funcionando.
   const soloLectura = Boolean(respaldo)
 
   // null = cerrado | { contacto: null } = crear | { contacto } = editar
   const [formulario, setFormulario] = useState(null)
+  // El contacto que se va a eliminar (si tiene valor se abre la confirmación)
   const [aEliminar, setAEliminar] = useState(null)
   const [eliminando, setEliminando] = useState(false)
+  // Mensaje verde después de crear, editar o eliminar
   const [aviso, setAviso] = useState(null)
 
-  /*
-   * Limpia un error anterior y abre el modal en modo creación.
-   * Al enviar contacto: null, el formulario sabe que debe crear y no editar.
-   */
   const abrirCrear = () => {
     limpiarError()
     setFormulario({ contacto: null })
@@ -63,11 +47,8 @@ export default function ContactosPage() {
     setFormulario(null)
   }
 
+  // La llama el formulario al guardar. Si hay contacto es editar, si no es crear.
   const guardar = async (datos) => {
-    /*
-     * Pregunta si el modal estaba editando un registro existente.
-     * Después vuelve a cargar la lista con los filtros guardados por el hook.
-     */
     const editando = Boolean(formulario.contacto)
     const ok = editando ? await actualizar(formulario.contacto.id, datos) : await crear(datos)
     if (ok) setAviso(editando ? 'Contacto actualizado correctamente.' : 'Contacto creado correctamente.')
@@ -75,26 +56,20 @@ export default function ContactosPage() {
   }
 
   const confirmarEliminar = async () => {
-    /*
-     * Indica que la eliminación está en curso, llama al hook y luego cierra el modal.
-     * Si falla, el estado ya contiene el mensaje de error y se muestra como alerta roja.
-     */
     setEliminando(true)
     const ok = await eliminar(aEliminar.id)
     setEliminando(false)
     setAEliminar(null)
+    // Si falla, el error ya quedó guardado en el hook y sale la alerta roja
     if (ok) setAviso('Contacto eliminado correctamente.')
   }
 
-  /*
-   * En la primera carga todavía no hay contactos.
-   * Con este valor evitamos mostrar el texto de lista vacía mientras estamos esperando.
-   */
+  // Para mostrar "Cargando..." solo la primera vez y no "No se encontraron contactos"
   const primeraCarga = cargando && contactos.length === 0
 
   return (
     <>
-      {/* ---------- Encabezado ---------- */}
+      {/* Encabezado */}
       <header className="encabezado-icx">
         <Container className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
           <div>
@@ -114,12 +89,12 @@ export default function ContactosPage() {
       </header>
 
       <Container className="pb-5">
-        {/* ---------- Filtros ---------- */}
+        {/* Filtros */}
         <section className="tarjeta tarjeta-filtros p-3 p-md-4 mb-4" aria-label="Filtros de búsqueda">
           <FiltroForm onBuscar={buscar} deshabilitado={cargando} />
         </section>
 
-        {/* ---------- Aviso de modo respaldo (Oracle desconectado) ---------- */}
+        {/* Aviso amarillo cuando Oracle no responde y se muestra el respaldo */}
         {respaldo && (
           <Alert variant="warning" className="d-flex flex-column flex-md-row gap-2 justify-content-between">
             <div>
@@ -139,21 +114,20 @@ export default function ContactosPage() {
           </Alert>
         )}
 
-        {/* Con el formulario abierto, el error se muestra dentro del modal */}
+        {/* Si el formulario está abierto, el error se muestra dentro del modal y no aquí */}
         {error && !formulario && (
           <Alert variant="danger" dismissible onClose={limpiarError}>
             {error}
           </Alert>
         )}
 
-        {/* Aviso simple de la última acción realizada. Se cierra al pulsar la X. */}
         {aviso && (
           <Alert variant="success" dismissible onClose={() => setAviso(null)} className="mb-4">
             {aviso}
           </Alert>
         )}
 
-        {/* ---------- Resultados ---------- */}
+        {/* Resultados */}
         <section className="tarjeta p-3 p-md-4" aria-label="Resultados">
           {primeraCarga ? (
             <div className="text-center py-5">
@@ -182,6 +156,7 @@ export default function ContactosPage() {
                   soloLectura={soloLectura}
                 />
               </div>
+              {/* Si llegaron 50 es porque puede haber más, entonces aviso que usen los filtros */}
               {contactos.length >= LIMITE_BACKEND && (
                 <p className="small text-muted mt-3 mb-0">
                   Mostrando los primeros {LIMITE_BACKEND} resultados. Usa los filtros para afinar la búsqueda.
@@ -192,6 +167,7 @@ export default function ContactosPage() {
         </section>
       </Container>
 
+      {/* El modal solo se monta cuando está abierto, así siempre arranca con los datos correctos */}
       {formulario && (
         <ContactoFormModal
           contacto={formulario.contacto}
@@ -201,7 +177,7 @@ export default function ContactosPage() {
         />
       )}
 
-      {/* ---------- Confirmar eliminación ---------- */}
+      {/* Confirmación antes de eliminar */}
       <Modal
         show={Boolean(aEliminar)}
         onHide={eliminando ? undefined : () => setAEliminar(null)}

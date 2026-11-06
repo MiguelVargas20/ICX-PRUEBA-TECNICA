@@ -1,19 +1,19 @@
 import { Badge, Button, Table } from 'react-bootstrap'
 
-/*
- * Muestra los contactos y sus acciones.
- * Se conecta con ContactosPage.jsx: enviar editar/eliminar usa las funciones recibidas por props.
- */
+// Tabla de contactos. Solo muestra los datos, las acciones de editar y eliminar
+// las recibe por props desde ContactosPage.
 
+// Lo que se muestra cuando falta un dato
 const marcadorVacio = <span className="text-muted">—</span>
 
-/* Iniciales para el círculo: "Ana Pérez" → "AP". */
+// Iniciales para el círculo: "Ana Pérez" -> "AP"
 const obtenerIniciales = (contacto) =>
   ((contacto.nombre?.[0] ?? '') + (contacto.apellido?.[0] ?? '')).toUpperCase() || '?'
 
-/* soloLectura = true cuando Oracle está desconectado: los botones se desactivan. */
+// soloLectura es true cuando se está mostrando el respaldo: se desactivan los botones
 export default function ContactosTabla({ contactos, onEditar, onEliminar, soloLectura = false }) {
   return (
+    // responsive agrega scroll horizontal en pantallas pequeñas
     <Table hover responsive className="tabla-contactos align-middle mb-0">
       <thead>
         <tr>
@@ -26,6 +26,7 @@ export default function ContactosTabla({ contactos, onEditar, onEliminar, soloLe
       </thead>
       <tbody>
         {contactos.map((contacto) => (
+          // key con el id para que React identifique cada fila
           <tr key={contacto.id}>
             <td className="text-nowrap">
               <div className="d-flex align-items-center gap-3">
@@ -57,6 +58,7 @@ export default function ContactosTabla({ contactos, onEditar, onEliminar, soloLe
               )}
             </td>
             <td className="text-nowrap">
+              {/* Para el link tel: dejo solo números y el +, en el celular abre el marcador */}
               {contacto.telefono ? (
                 <a className="enlace-dato" href={`tel:${contacto.telefono.replace(/[^\d+]/g, '')}`}>
                   {contacto.telefono}
